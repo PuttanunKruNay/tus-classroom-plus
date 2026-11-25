@@ -1,0 +1,18 @@
+# ป้องกันไม่ให้อัปโหลดไฟล์ความลับหรือไฟล์ดิบขึ้น Vercel Build เด็ดขาด
+.env
+.env.local
+.env.*.local
+serviceAccountKey.json
+*firebase-adminsdk*.json
+*.pem
+data/
+node_modules/
+.next/
+.git/
+สิ่งที่ต้องปรับปรุงระบบ.pdf
+งานios TL-20261124T084626Z-1-001/
+สไลด์เนื้อหาในการเรียน/
+ตราโรงเรียน.png
+legacy-html/
+js/
+เปิดเว็บแอป.bat
