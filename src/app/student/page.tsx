@@ -438,11 +438,11 @@ export default function StudentPortalPage() {
   const tabs: { id: StudentTab; label: string; short: string; icon: typeof Home }[] = [
     { id: 'home', label: 'หน้าแรก', short: 'หน้าแรก', icon: Home },
     { id: 'lessons', label: 'บทเรียนและสไลด์', short: 'บทเรียน', icon: BookOpen },
-    { id: 'circuit', label: 'ต่อวงจร TechTale', short: 'ต่อวงจร', icon: Cpu },
-    { id: 'quizzes', label: 'บททดสอบ', short: 'บททดสอบ', icon: ClipboardCheck },
+    { id: 'circuit', label: 'ต่อวงจร TechTale', short: 'วงจร', icon: Cpu },
+    { id: 'quizzes', label: 'บททดสอบ', short: 'สอบ', icon: ClipboardCheck },
     { id: 'line', label: 'ส่งงาน LINE', short: 'LINE', icon: Send },
     { id: 'grades', label: 'คะแนนของฉัน', short: 'คะแนน', icon: Award },
-    { id: 'game', label: 'เกมเก็บ XP', short: 'เกม XP', icon: Gamepad2 }
+    { id: 'game', label: 'เกมเก็บ XP', short: 'XP', icon: Gamepad2 }
   ];
 
   return (
@@ -557,12 +557,12 @@ export default function StudentPortalPage() {
               })}
             </nav>
 
-            {/* Bottom Navigation สำหรับมือถือ (รองรับ iPhone/Android/safe-area เลื่อนแนวนอนลื่นไม่บีบปุ่ม) */}
+            {/* Bottom Navigation สำหรับมือถือ (แสดงครบ 7 ปุ่มพอดีจอ ไม่ต้องเลื่อนแนวนอน) */}
             <nav
               aria-label="เมนูล่างมือถือ"
-              className="md:hidden fixed bottom-0 inset-x-0 z-40 tus-bottom-nav pb-safe px-1.5 pt-1.5"
+              className="md:hidden fixed bottom-0 inset-x-0 z-40 tus-bottom-nav pb-safe px-1 pt-1.5"
             >
-              <div className="flex items-center gap-1 overflow-x-auto no-scrollbar snap-x">
+              <div className="grid grid-cols-7 gap-0.5">
                 {tabs.map(tab => {
                   const Icon = tab.icon;
                   const active = activeTab === tab.id;
@@ -574,12 +574,12 @@ export default function StudentPortalPage() {
                         setActiveTab(tab.id);
                         window.scrollTo({ top: 0, behavior: 'smooth' });
                       }}
-                      className={`min-w-[64px] flex-1 min-h-[50px] px-1.5 py-1.5 rounded-xl flex flex-col items-center justify-center gap-0.5 cursor-pointer transition shrink-0 snap-center ${
+                      className={`min-h-[48px] px-0.5 py-1.5 rounded-xl flex flex-col items-center justify-center gap-0.5 cursor-pointer transition ${
                         active ? 'text-[var(--color-primary)] bg-[var(--color-primary-soft)] font-bold' : 'text-[var(--text-muted)]'
                       }`}
                     >
                       <Icon className="w-5 h-5 shrink-0" />
-                      <span className="text-[11px] font-heading leading-tight whitespace-nowrap">{tab.short}</span>
+                      <span className="text-[10px] sm:text-[11px] font-heading leading-tight">{tab.short}</span>
                     </button>
                   );
                 })}

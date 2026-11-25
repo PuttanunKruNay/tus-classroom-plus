@@ -1494,21 +1494,17 @@ export default function TeacherPortalPage() {
           {/* VIEW: COURSE WORKSPACE (Google Classroom Tabs) */}
           {sidebarView === 'course' && (
             <div className="space-y-5">
-              {/* Course Tabs: ฟอรัม / งานของชั้นเรียน / บททดสอบ (Form) / บุคคล / คะแนน / ตรวจงาน LINE / รายงานปัญหา / เกม XP */}
-              <div className="tus-card p-2 flex gap-1.5 overflow-x-auto no-scrollbar">
+              {/* Course Tabs: แสดงครบทุกปุ่ม 2 แถวบนคอม/แท็บเล็ต และ 2 คอลัมน์บนมือถือ ไม่ต้องเลื่อนซ้าย-ขวา */}
+              <div className="tus-card p-2 grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                 {[
-                  { id: 'stream' as const, label: 'ฟอรัม', icon: MessageSquare },
-                  { id: 'classwork' as const, label: 'งานของชั้นเรียน', icon: FolderKanban },
-                  { id: 'forms' as const, label: 'บททดสอบ (Form)', icon: ClipboardCheck },
-                  { id: 'people' as const, label: 'บุคคล', icon: Users },
-                  { id: 'grades' as const, label: 'คะแนน', icon: BarChart3 },
-                  { id: 'line' as const, label: `ตรวจงาน LINE (${pendingLineCount})`, icon: CheckSquare },
-                  {
-                    id: 'issues' as const,
-                    label: openIssuesCount > 0 ? `รายงานปัญหา (${openIssuesCount})` : 'รายงานปัญหาจากนักเรียน',
-                    icon: MessageSquareWarning
-                  },
-                  { id: 'xp' as const, label: 'เกม XP', icon: Trophy }
+                  { id: 'stream' as const, label: 'ฟอรัม', icon: MessageSquare, badge: 0 },
+                  { id: 'classwork' as const, label: 'งานของชั้นเรียน', icon: FolderKanban, badge: 0 },
+                  { id: 'forms' as const, label: 'บททดสอบ (Form)', icon: ClipboardCheck, badge: 0 },
+                  { id: 'people' as const, label: 'บุคคล', icon: Users, badge: 0 },
+                  { id: 'grades' as const, label: 'คะแนน', icon: BarChart3, badge: 0 },
+                  { id: 'line' as const, label: 'ตรวจงาน LINE', icon: CheckSquare, badge: pendingLineCount },
+                  { id: 'issues' as const, label: 'รายงานปัญหา', icon: MessageSquareWarning, badge: openIssuesCount },
+                  { id: 'xp' as const, label: 'เกม XP', icon: Trophy, badge: 0 }
                 ].map(t => {
                   const Icon = t.icon;
                   const active = courseTab === t.id;
@@ -1517,14 +1513,25 @@ export default function TeacherPortalPage() {
                       key={t.id}
                       type="button"
                       onClick={() => setCourseTab(t.id)}
-                      className={`min-h-[44px] px-4 py-2 rounded-xl text-sm font-heading font-bold whitespace-nowrap shrink-0 inline-flex items-center gap-1.5 cursor-pointer transition ${
+                      className={`min-h-[44px] px-2.5 sm:px-3 py-2 rounded-xl text-xs sm:text-sm font-heading font-bold inline-flex items-center justify-center gap-1.5 cursor-pointer transition text-center ${
                         active
-                          ? 'bg-[var(--color-primary)] text-white'
-                          : 'text-[var(--text-secondary)] hover:bg-[var(--color-primary-soft)] hover:text-[var(--color-primary)]'
+                          ? 'bg-[var(--color-primary)] text-white shadow-sm'
+                          : 'bg-[var(--bg-surface-muted)]/60 text-[var(--text-secondary)] hover:bg-[var(--color-primary-soft)] hover:text-[var(--color-primary)]'
                       }`}
                     >
-                      <Icon className="w-4 h-4" />
-                      {t.label}
+                      <Icon className="w-4 h-4 shrink-0" />
+                      <span className="truncate">{t.label}</span>
+                      {t.badge > 0 && (
+                        <span
+                          className={`px-1.5 py-0.5 rounded-full text-[11px] font-mono font-bold shrink-0 ${
+                            active
+                              ? 'bg-white text-[var(--color-primary)]'
+                              : 'bg-[var(--color-danger)] text-white'
+                          }`}
+                        >
+                          {t.badge}
+                        </span>
+                      )}
                     </button>
                   );
                 })}
@@ -2248,17 +2255,16 @@ export default function TeacherPortalPage() {
         </main>
       </div>
 
-      {/* Mobile Bottom Nav */}
-      <nav aria-label="เมนูล่างครูผู้สอน" className="lg:hidden fixed bottom-0 inset-x-0 z-40 tus-bottom-nav pb-safe px-1.5 pt-1.5">
-        <div className="flex items-center justify-between gap-1 overflow-x-auto no-scrollbar">
+      {/* Mobile Bottom Nav (แสดงครบทุกปุ่มพอดีจอ ไม่ต้องเลื่อนแนวนอน) */}
+      <nav aria-label="เมนูล่างครูผู้สอน" className="lg:hidden fixed bottom-0 inset-x-0 z-40 tus-bottom-nav pb-safe px-1 pt-1.5">
+        <div className="grid grid-cols-6 gap-0.5">
           {[
-            { id: 'home' as const, label: 'ชั้นเรียน', icon: Home, onClick: () => setSidebarView('home'), active: sidebarView === 'home' },
-            { id: 'course' as const, label: 'ห้องเรียน', icon: MessageSquare, onClick: () => { setSidebarView('course'); setCourseTab('stream'); }, active: sidebarView === 'course' && courseTab !== 'forms' },
-            { id: 'forms' as const, label: 'บททดสอบ', icon: ClipboardCheck, onClick: () => { setSidebarView('course'); setCourseTab('forms'); }, active: sidebarView === 'course' && courseTab === 'forms' },
-            { id: 'line' as const, label: `LINE(${pendingLineCount})`, icon: CheckSquare, onClick: () => setSidebarView('line'), active: sidebarView === 'line' },
-            { id: 'issues' as const, label: openIssuesCount > 0 ? `ปัญหา(${openIssuesCount})` : 'ปัญหา', icon: MessageSquareWarning, onClick: () => setSidebarView('issues'), active: sidebarView === 'issues' },
-            { id: 'xp' as const, label: 'XP', icon: Trophy, onClick: () => setSidebarView('xp'), active: sidebarView === 'xp' },
-            { id: 'settings' as const, label: 'ตั้งค่า', icon: Settings, onClick: () => setSidebarView('settings'), active: sidebarView === 'settings' }
+            { id: 'home' as const, label: 'ชั้นเรียน', icon: Home, badge: 0, onClick: () => setSidebarView('home'), active: sidebarView === 'home' },
+            { id: 'course' as const, label: 'ห้องเรียน', icon: MessageSquare, badge: 0, onClick: () => { setSidebarView('course'); setCourseTab('stream'); }, active: sidebarView === 'course' && courseTab !== 'forms' },
+            { id: 'forms' as const, label: 'สอบ', icon: ClipboardCheck, badge: 0, onClick: () => { setSidebarView('course'); setCourseTab('forms'); }, active: sidebarView === 'course' && courseTab === 'forms' },
+            { id: 'line' as const, label: 'LINE', icon: CheckSquare, badge: pendingLineCount, onClick: () => setSidebarView('line'), active: sidebarView === 'line' },
+            { id: 'issues' as const, label: 'ปัญหา', icon: MessageSquareWarning, badge: openIssuesCount, onClick: () => setSidebarView('issues'), active: sidebarView === 'issues' },
+            { id: 'xp' as const, label: 'XP', icon: Trophy, badge: 0, onClick: () => setSidebarView('xp'), active: sidebarView === 'xp' }
           ].map(item => {
             const Icon = item.icon;
             return (
@@ -2269,12 +2275,17 @@ export default function TeacherPortalPage() {
                   item.onClick();
                   window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
-                className={`min-w-[58px] flex-1 min-h-[48px] py-1.5 px-1 rounded-xl flex flex-col items-center justify-center gap-0.5 cursor-pointer transition shrink-0 ${
+                className={`relative min-h-[48px] py-1.5 px-0.5 rounded-xl flex flex-col items-center justify-center gap-0.5 cursor-pointer transition ${
                   item.active ? 'text-[var(--color-primary)] bg-[var(--color-primary-soft)] font-bold' : 'text-[var(--text-muted)]'
                 }`}
               >
-                <Icon className="w-5 h-5" />
-                <span className="text-[11px] font-heading whitespace-nowrap">{item.label}</span>
+                <Icon className="w-5 h-5 shrink-0" />
+                <span className="text-[10px] sm:text-[11px] font-heading leading-tight">{item.label}</span>
+                {item.badge > 0 && (
+                  <span className="absolute top-1 right-1.5 min-w-[16px] h-4 px-1 rounded-full bg-[var(--color-danger)] text-white text-[9px] font-mono font-bold flex items-center justify-center">
+                    {item.badge}
+                  </span>
+                )}
               </button>
             );
           })}
