@@ -1,0 +1,24 @@
+# Firebase App Hosting configuration (Next.js Full-Stack + Firestore)
+runConfig:
+  cpu: 1
+  memoryMiB: 1024
+  concurrency: 80
+  minInstances: 0
+  maxInstances: 5
+
+env:
+  - variable: FIREBASE_PROJECT_ID
+    value: tus-classroom-plus
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: ADMIN_USERNAME
+    value: admin
+    availability:
+      - RUNTIME
+  # หมายเหตุ: ตั้งค่า SECRET ด้านล่างใน Firebase App Hosting / Cloud Secret Manager หรือ Vercel Environment Variables:
+  # - SESSION_SECRET
+  # - FIREBASE_CLIENT_EMAIL
+  # - FIREBASE_PRIVATE_KEY
+  # - GEMINI_API_KEY
+  # - SMTP_HOST / SMTP_PORT / SMTP_USER / SMTP_PASS (สำหรับแจ้งเตือนอีเมลครู)

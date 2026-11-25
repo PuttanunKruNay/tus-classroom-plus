@@ -1,0 +1,14 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // =========================================================================
+    // TUS Classroom Plus — Zero-Trust Firestore Rules
+    // ปิดการเข้าถึง Firestore โดยตรงจากฝั่งเบราว์เซอร์ 100%
+    // การอ่าน/เขียนฐานข้อมูลทั้งหมดต้องผ่าน Next.js Backend API (Firebase Admin SDK)
+    // ซึ่งตรวจสอบ Session Cookie, บทบาท (student/teacher/admin) และสิทธิ์รายบุคคลแล้ว
+    // =========================================================================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

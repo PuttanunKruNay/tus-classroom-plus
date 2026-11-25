@@ -1,0 +1,47 @@
+{
+  "id": "/",
+  "name": "TUS Classroom Plus — โรงเรียนเตรียมอุดมศึกษาภาคใต้",
+  "short_name": "TUS Classroom",
+  "description": "ระบบการจัดการชั้นเรียนและห้องเรียนออนไลน์ โรงเรียนเตรียมอุดมศึกษาภาคใต้ รองรับทุกอุปกรณ์",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "background_color": "#FFF7FA",
+  "theme_color": "#B8194F",
+  "orientation": "any",
+  "lang": "th",
+  "dir": "ltr",
+  "categories": ["education", "productivity"],
+  "icons": [
+    {
+      "src": "/assets/logo_phrakiao.png?v=3",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/assets/logo_phrakiao.png?v=3",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "ห้องเรียนนักเรียน",
+      "short_name": "นักเรียน",
+      "url": "/student"
+    },
+    {
+      "name": "ศูนย์ควบคุมครูผู้สอน",
+      "short_name": "ครูผู้สอน",
+      "url": "/teacher"
+    },
+    {
+      "name": "ศูนย์ผู้ดูแลระบบ",
+      "short_name": "แอดมิน",
+      "url": "/admin"
+    }
+  ]
+}

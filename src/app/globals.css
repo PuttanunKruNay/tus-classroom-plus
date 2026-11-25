@@ -1,0 +1,396 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: var(--font-noto), "Noto Sans Thai", sans-serif;
+  --font-heading: var(--font-prompt), "Prompt", sans-serif;
+}
+
+/* ============================================================================
+   TUS Classroom Plus — Unified Design System Tokens (Light & Dark Mode)
+   สีหลัก: #B8194F | ทอง: เฉพาะ XP/รางวัล | เขียว: สำเร็จ | แดง: ลบ/ผิดพลาด
+   ============================================================================ */
+:root {
+  --color-primary: #b8194f;
+  --color-primary-hover: #9f1443;
+  --color-primary-shadow: #7a0d32;
+  --color-primary-soft: #fce8f0;
+  --color-primary-border: #f4bfd2;
+
+  --color-gold: #b45309;
+  --color-gold-bg: #fef3c7;
+  --color-gold-border: #f59e0b;
+
+  --color-success: #15803d;
+  --color-success-bg: #dcfce7;
+  --color-success-border: #86efac;
+
+  --color-danger: #dc2626;
+  --color-danger-shadow: #991b1b;
+  --color-danger-bg: #fee2e2;
+
+  --bg-page: #fff7fa;
+  --bg-surface: #ffffff;
+  --bg-surface-muted: #fdf2f6;
+  --bg-header: rgba(255, 249, 252, 0.94);
+
+  --text-primary: #1f131b;
+  --text-secondary: #5a4351;
+  --text-muted: #725a68;
+
+  --border-subtle: #f3d6e2;
+  --border-strong: #e4aec4;
+
+  --radius-btn: 14px;
+  --radius-card: 20px;
+  --shadow-card: 0 8px 24px -8px rgba(184, 25, 79, 0.1), 0 2px 6px rgba(31, 19, 27, 0.04);
+  --shadow-card-hover: 0 14px 32px -10px rgba(184, 25, 79, 0.16), 0 4px 10px rgba(31, 19, 27, 0.06);
+}
+
+html[data-theme="dark"] {
+  --color-primary: #e03a72;
+  --color-primary-hover: #ec4d83;
+  --color-primary-shadow: #8c123c;
+  --color-primary-soft: #361724;
+  --color-primary-border: #6a2642;
+
+  --color-gold: #fbbf24;
+  --color-gold-bg: #3b2a0c;
+  --color-gold-border: #d97706;
+
+  --color-success: #4ade80;
+  --color-success-bg: #11301e;
+  --color-success-border: #166534;
+
+  --color-danger: #f87171;
+  --color-danger-shadow: #991b1b;
+  --color-danger-bg: #3b151a;
+
+  --bg-page: #140d12;
+  --bg-surface: #21161d;
+  --bg-surface-muted: #2c1d27;
+  --bg-header: rgba(24, 15, 21, 0.94);
+
+  --text-primary: #fdf4f8;
+  --text-secondary: #dec7d4;
+  --text-muted: #b699aa;
+
+  --border-subtle: #3d2836;
+  --border-strong: #5c3a50;
+
+  --shadow-card: 0 10px 28px -8px rgba(0, 0, 0, 0.5);
+  --shadow-card-hover: 0 16px 36px -10px rgba(0, 0, 0, 0.65);
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ลื่นไหลบนมือถือ iOS / Android / iPad: ตัดดีเลย์ 300ms ตอนแตะปุ่ม */
+button,
+a,
+input,
+select,
+textarea,
+[role="button"] {
+  touch-action: manipulation;
+}
+
+/* ป้องกัน iPhone/iPad Safari ซูมหน้าจอเองเมื่อแตะช่องพิมพ์ */
+@media (max-width: 768px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+  overflow-x: hidden;
+  font-size: 16px;
+}
+
+body {
+  font-family: var(--font-noto), "Noto Sans Thai", sans-serif;
+  font-size: 16px;
+  line-height: 1.65;
+  background-color: var(--bg-page);
+  color: var(--text-primary);
+  min-height: 100dvh;
+  overflow-x: hidden;
+  overscroll-behavior-y: none;
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+/* เลื่อนตารางลื่นไหลบน iOS / Android ทุกขนาดหน้าจอ */
+.overflow-x-auto {
+  -webkit-overflow-scrolling: touch;
+}
+
+h1, h2, h3, h4, h5, h6, .font-heading {
+  font-family: var(--font-prompt), "Prompt", sans-serif;
+}
+
+/* Focus Ring ชัดเจนสำหรับคีย์บอร์ด Tab */
+:focus-visible {
+  outline: 3px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Inputs & Form Controls */
+.tus-input {
+  width: 100%;
+  min-height: 46px;
+  padding: 0.65rem 0.95rem;
+  border-radius: var(--radius-btn);
+  border: 1.5px solid var(--border-strong);
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+  font-size: 16px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.tus-input::placeholder {
+  color: var(--text-muted);
+}
+
+.tus-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-soft);
+}
+
+/* ---------- Chunky 3D Tactile Buttons (ล่ำๆ สูง >= 48px, โค้ง 14px, ยุบ 4px) ---------- */
+.btn-primary-3d {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 48px;
+  padding: 0.65rem 1.35rem;
+  border-radius: var(--radius-btn);
+  background-color: var(--color-primary);
+  color: #ffffff;
+  font-family: var(--font-prompt), "Prompt", sans-serif;
+  font-weight: 700;
+  font-size: 1rem;
+  border: 2px solid var(--color-primary);
+  border-bottom: 5px solid var(--color-primary-shadow);
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.08s ease, border-bottom-width 0.08s ease, background-color 0.15s ease;
+}
+
+.btn-primary-3d:hover:not(:disabled) {
+  background-color: var(--color-primary-hover);
+}
+
+.btn-primary-3d:active:not(:disabled) {
+  transform: translateY(4px);
+  border-bottom-width: 1px;
+}
+
+.btn-primary-3d:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btn-secondary-3d {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 48px;
+  padding: 0.6rem 1.2rem;
+  border-radius: var(--radius-btn);
+  background-color: var(--bg-surface);
+  color: var(--color-primary);
+  font-family: var(--font-prompt), "Prompt", sans-serif;
+  font-weight: 600;
+  font-size: 0.95rem;
+  border: 2px solid var(--border-strong);
+  border-bottom: 5px solid var(--border-strong);
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.08s ease, border-bottom-width 0.08s ease, background-color 0.15s ease;
+}
+
+.btn-secondary-3d:hover:not(:disabled) {
+  background-color: var(--color-primary-soft);
+  border-color: var(--color-primary);
+}
+
+.btn-secondary-3d:active:not(:disabled) {
+  transform: translateY(4px);
+  border-bottom-width: 1px;
+}
+
+.btn-secondary-3d:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btn-danger-3d {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-height: 48px;
+  padding: 0.6rem 1.15rem;
+  border-radius: var(--radius-btn);
+  background-color: var(--bg-surface);
+  color: var(--color-danger);
+  font-family: var(--font-prompt), "Prompt", sans-serif;
+  font-weight: 600;
+  font-size: 0.95rem;
+  border: 2px solid var(--color-danger);
+  border-bottom: 5px solid var(--color-danger-shadow);
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.08s ease, border-bottom-width 0.08s ease, background-color 0.15s ease;
+}
+
+.btn-danger-3d:hover:not(:disabled) {
+  background-color: var(--color-danger-bg);
+}
+
+.btn-danger-3d:active:not(:disabled) {
+  transform: translateY(4px);
+  border-bottom-width: 1px;
+}
+
+.btn-compact-3d {
+  min-height: 42px;
+  padding: 0.45rem 0.9rem;
+  font-size: 0.875rem;
+}
+
+/* ---------- Cards & Surfaces ---------- */
+.tus-card {
+  background-color: var(--bg-surface);
+  border: 1.5px solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.tus-card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-card-hover);
+  border-color: var(--border-strong);
+}
+
+.tus-header {
+  background-color: var(--bg-header);
+  backdrop-filter: saturate(180%) blur(16px);
+  -webkit-backdrop-filter: saturate(180%) blur(16px);
+  border-bottom: 1.5px solid var(--border-subtle);
+}
+
+.tus-bottom-nav {
+  background-color: var(--bg-header);
+  backdrop-filter: saturate(180%) blur(16px);
+  -webkit-backdrop-filter: saturate(180%) blur(16px);
+  border-top: 1.5px solid var(--border-subtle);
+  box-shadow: 0 -6px 24px rgba(31, 19, 27, 0.08);
+}
+
+.pb-safe {
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+}
+
+/* ---------- School Emblem Gentle 4% Breath Animation (3.6s) ---------- */
+@keyframes emblemBreath {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.04);
+  }
+}
+
+.emblem-breath {
+  animation: emblemBreath 3.6s ease-in-out infinite;
+}
+
+/* ---------- Subtle UI Motion & Skeleton ---------- */
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scalePop {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes skeletonPulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+
+.animate-fade-up {
+  animation: fadeUp 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-scale-pop {
+  animation: scalePop 0.25s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.skeleton {
+  background-color: var(--bg-surface-muted);
+  border-radius: 12px;
+  animation: skeletonPulse 1.5s ease-in-out infinite;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-page);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-primary);
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* เคารพ prefers-reduced-motion 100% */
+@media (prefers-reduced-motion: reduce) {
+  .emblem-breath,
+  .animate-fade-up,
+  .animate-scale-pop,
+  .skeleton {
+    animation: none !important;
+  }
+  * {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
