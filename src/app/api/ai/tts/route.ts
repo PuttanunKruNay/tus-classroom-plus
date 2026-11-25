@@ -37,10 +37,15 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const rawText = String(body.text || '')
+      .replace(/\*\*/g, '')
       .replace(/[*#`_~>]/g, ' ')
       .replace(/\s+/g, ' ')
       .trim()
-      .slice(0, 420);
+      .slice(0, 600);
+
+    const requestedVoice = String(body.voice || 'Kore').trim();
+    const allowedVoices = new Set(['Kore', 'Puck', 'Aoede', 'Charon', 'Fenrir', 'Leda', 'Zephyr']);
+    const voiceName = allowedVoices.has(requestedVoice) ? requestedVoice : 'Kore';
 
     if (!rawText) {
       return NextResponse.json({ ok: false, message: 'ไม่มีข้อความสำหรับอ่านออกเสียง' }, { status: 400 });
@@ -53,13 +58,13 @@ export async function POST(req: Request) {
         const res = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          signal: AbortSignal.timeout(6000),
+          signal: AbortSignal.timeout(22000),
           body: JSON.stringify({
             contents: [
               {
                 parts: [
                   {
-                    text: `Read aloud clearly in natural Thai without adding extra words:\n${rawText}`
+                    text: rawText
                   }
                 ]
               }
@@ -68,7 +73,7 @@ export async function POST(req: Request) {
               responseModalities: ['AUDIO'],
               speechConfig: {
                 voiceConfig: {
-                  prebuiltVoiceConfig: { voiceName: 'Kore' }
+                  prebuiltVoiceConfig: { voiceName }
                 }
               }
             }
@@ -87,8 +92,8 @@ export async function POST(req: Request) {
         // ถ้า Gemini ส่งมาเป็น PCM L16 ให้ห่อหัว WAV เพื่อให้ iOS Safari / Android / Desktop เล่นได้ 100%
         let outBuf: Buffer = rawBuf;
         let outMime = mimeType || 'audio/wav';
-        if (mimeType.includes('L16') || mimeType.includes('pcm')) {
-          const rateMatch = mimeType.match(/rate=(\d+)/);
+        if (mimeType.toLowerCase().includes('l16') || mimeType.toLowerCase().includes('pcm')) {
+          const rateMatch = mimeType.match(/rate=(\d+)/i);
           const rate = rateMatch ? Number(rateMatch[1]) : 24000;
           outBuf = pcm16ToWav(rawBuf, rate, 1);
           outMime = 'audio/wav';
@@ -101,8 +106,8 @@ export async function POST(req: Request) {
             'Cache-Control': 'no-store'
           }
         });
-      } catch {
-        // ลองโมเดลถัดไป
+      } catch (e) {
+        console.warn(`[POST /api/ai/tts] model ${modelName} failed:`, e);
       }
     }
 

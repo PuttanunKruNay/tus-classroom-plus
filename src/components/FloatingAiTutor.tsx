@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Bot, X, Send, Mic, MicOff, Volume2, VolumeX, AlertCircle, Square, Zap } from 'lucide-react';
+import { Bot, X, Send, Mic, MicOff, Volume2, VolumeX, AlertCircle, Square, Zap, Loader2 } from 'lucide-react';
 
 interface ChatMessage {
   id: string;
@@ -15,6 +15,21 @@ interface FloatingAiTutorProps {
   dailyLimit?: number;
 }
 
+// แสดงข้อความที่มี **ตัวหนา** ให้สวยงาม ไม่แสดงเครื่องหมาย ** ดิบๆ
+function renderFormattedText(text: string) {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  return parts.map((part, idx) => {
+    if (part.startsWith('**') && part.endsWith('**') && part.length > 4) {
+      return (
+        <strong key={idx} className="font-heading font-bold">
+          {part.slice(2, -2)}
+        </strong>
+      );
+    }
+    return <span key={idx}>{part}</span>;
+  });
+}
+
 export function FloatingAiTutor({
   externalPrompt,
   initialRemaining = 20,
@@ -23,8 +38,9 @@ export function FloatingAiTutor({
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState('');
   const [status, setStatus] = useState<'idle' | 'listening' | 'thinking' | 'loading_voice' | 'speaking'>('idle');
-  const [voiceMode, setVoiceMode] = useState<'fast' | 'hd'>('fast');
-  const [voiceEngine, setVoiceEngine] = useState<'gemini' | 'browser'>('browser');
+  const [speakingMsgId, setSpeakingMsgId] = useState<string | null>(null);
+  const [studioVoice, setStudioVoice] = useState<'Kore' | 'Puck'>('Kore');
+  const [voiceEngine, setVoiceEngine] = useState<'gemini' | 'browser'>('gemini');
   const [autoSpeak, setAutoSpeak] = useState(false);
   const [remaining, setRemaining] = useState(initialRemaining);
   const [voiceWarning, setVoiceWarning] = useState('');
@@ -32,7 +48,7 @@ export function FloatingAiTutor({
     {
       id: 'welcome',
       sender: 'ai',
-      text: 'สวัสดีครับ! ผมคือผู้ช่วยสอน AI ตอบไว วิชาการออกแบบและเทคโนโลยี ม.4 พิมพ์หรือแตะปุ่มคำถามด่วนด้านล่างได้เลยครับ'
+      text: 'สวัสดีครับ! ผมคือผู้ช่วยสอน AI วิชาการออกแบบและเทคโนโลยี ม.4 พร้อมเสียงอ่าน Google AI Studio ภาษาไทย พิมพ์หรือแตะคำถามด่วนด้านล่างได้เลยครับ'
     }
   ]);
 
@@ -40,6 +56,8 @@ export function FloatingAiTutor({
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioUrlRef = useRef<string | null>(null);
+  const ttsAbortRef = useRef<AbortController | null>(null);
+  const audioCacheRef = useRef<Map<string, Blob>>(new Map());
 
   useEffect(() => {
     setRemaining(initialRemaining);
@@ -53,11 +71,11 @@ export function FloatingAiTutor({
 
   useEffect(() => {
     return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-      }
-      if (audioUrlRef.current) {
-        URL.revokeObjectURL(audioUrlRef.current);
+      if (ttsAbortRef.current) ttsAbortRef.current.abort();
+      if (audioRef.current) audioRef.current.pause();
+      if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
       }
     };
   }, []);
@@ -71,7 +89,14 @@ export function FloatingAiTutor({
   }, [externalPrompt?.nonce]);
 
   function stopSpeaking() {
+    if (ttsAbortRef.current) {
+      ttsAbortRef.current.abort();
+      ttsAbortRef.current = null;
+    }
     if (audioRef.current) {
+      audioRef.current.onplay = null;
+      audioRef.current.onended = null;
+      audioRef.current.onerror = null;
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
       audioRef.current = null;
@@ -83,12 +108,40 @@ export function FloatingAiTutor({
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
     }
+    setSpeakingMsgId(null);
     setStatus(prev => (prev === 'speaking' || prev === 'loading_voice' ? 'idle' : prev));
   }
 
-  function speakWithBrowserFallback(text: string) {
+  function playBlob(blob: Blob, msgId: string, fallbackText: string) {
+    const url = URL.createObjectURL(blob);
+    audioUrlRef.current = url;
+    const audio = new Audio(url);
+    audioRef.current = audio;
+    setVoiceEngine('gemini');
+    setSpeakingMsgId(msgId);
+
+    audio.onplay = () => {
+      setSpeakingMsgId(msgId);
+      setStatus('speaking');
+    };
+    audio.onended = () => {
+      stopSpeaking();
+    };
+    audio.onerror = () => {
+      stopSpeaking();
+      speakWithBrowserFallback(fallbackText, msgId);
+    };
+
+    void audio.play().catch(() => {
+      stopSpeaking();
+      speakWithBrowserFallback(fallbackText, msgId);
+    });
+  }
+
+  function speakWithBrowserFallback(text: string, msgId: string) {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
-      setVoiceWarning('เบราว์เซอร์นี้ไม่รองรับการอ่านออกเสียง แต่ยังอ่านข้อความและพิมพ์ถามได้ตามปกติครับ');
+      setVoiceWarning('ไม่สามารถเล่นเสียงได้บนเบราว์เซอร์นี้ แต่ยังอ่านข้อความได้ตามปกติครับ');
+      setSpeakingMsgId(null);
       setStatus('idle');
       return;
     }
@@ -98,58 +151,64 @@ export function FloatingAiTutor({
     const utter = new SpeechSynthesisUtterance(clean);
     utter.lang = 'th-TH';
     utter.rate = 1.0;
-    utter.onstart = () => setStatus('speaking');
-    utter.onend = () => setStatus(prev => (prev === 'speaking' ? 'idle' : prev));
-    utter.onerror = () => setStatus(prev => (prev === 'speaking' ? 'idle' : prev));
+    utter.onstart = () => {
+      setSpeakingMsgId(msgId);
+      setStatus('speaking');
+    };
+    utter.onend = () => {
+      setSpeakingMsgId(prev => (prev === msgId ? null : prev));
+      setStatus(prev => (prev === 'speaking' ? 'idle' : prev));
+    };
+    utter.onerror = () => {
+      setSpeakingMsgId(prev => (prev === msgId ? null : prev));
+      setStatus(prev => (prev === 'speaking' ? 'idle' : prev));
+    };
     window.speechSynthesis.speak(utter);
   }
 
-  // รองรับทั้งโหมดเสียงเร็วทันใจ (<100ms ผ่านอุปกรณ์) และโหมดเสียง HD (Gemini Neural TTS)
-  async function speakText(text: string, preferMode?: 'fast' | 'hd') {
+  // ใช้เสียงจาก Google AI Studio (Gemini Neural TTS: /api/ai/tts) เป็นค่าเริ่มต้นทุกครั้ง + แคชไว้ฟังซ้ำทันที
+  async function speakText(text: string, msgId: string) {
     stopSpeaking();
     setVoiceWarning('');
-    const mode = preferMode || voiceMode;
+    setSpeakingMsgId(msgId);
 
-    if (mode === 'fast' && typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      speakWithBrowserFallback(text);
+    const cacheKey = `${studioVoice}::${msgId}`;
+    const cachedBlob = audioCacheRef.current.get(cacheKey);
+    if (cachedBlob) {
+      playBlob(cachedBlob, msgId, text);
       return;
     }
 
     setStatus('loading_voice');
+    const controller = new AbortController();
+    ttsAbortRef.current = controller;
 
     try {
       const res = await fetch('/api/ai/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text })
+        signal: controller.signal,
+        body: JSON.stringify({ text, voice: studioVoice })
       });
+
+      if (controller.signal.aborted) return;
 
       const contentType = res.headers.get('content-type') || '';
       if (res.ok && contentType.startsWith('audio/')) {
         const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        audioUrlRef.current = url;
-        const audio = new Audio(url);
-        audioRef.current = audio;
-        setVoiceEngine('gemini');
-
-        audio.onplay = () => setStatus('speaking');
-        audio.onended = () => {
-          stopSpeaking();
-        };
-        audio.onerror = () => {
-          stopSpeaking();
-          speakWithBrowserFallback(text);
-        };
-
-        await audio.play();
+        if (controller.signal.aborted) return;
+        audioCacheRef.current.set(cacheKey, blob);
+        playBlob(blob, msgId, text);
         return;
       }
-    } catch {
-      // fallback seamlessly to browser speechSynthesis
+    } catch (err) {
+      if ((err as Error)?.name === 'AbortError') return;
     }
 
-    speakWithBrowserFallback(text);
+    if (!controller.signal.aborted) {
+      setVoiceWarning('เสียง Google AI Studio กำลังหนาแน่น สลับใช้เสียงสำรองชั่วคราวครับ');
+      speakWithBrowserFallback(text, msgId);
+    }
   }
 
   async function sendMessage(textOverride?: string, lessonTitle?: string) {
@@ -175,7 +234,7 @@ export function FloatingAiTutor({
           prompt,
           contextLessonTitle: lessonTitle || '',
           toolMode: 'student_tutor',
-          history: nextHistory.slice(-6)
+          history: nextHistory.slice(-4)
         })
       });
       const data = await res.json();
@@ -183,10 +242,11 @@ export function FloatingAiTutor({
         setRemaining(data.remainingToday);
       }
       const answer = data.answer || data.message || 'ขออภัย ไม่สามารถตอบคำถามได้ในขณะนี้';
-      setMessages(prev => [...prev, { id: `a-${Date.now()}`, sender: 'ai', text: answer }]);
+      const aiMsgId = `a-${Date.now()}`;
+      setMessages(prev => [...prev, { id: aiMsgId, sender: 'ai', text: answer }]);
       setStatus('idle');
       if (autoSpeak && data.ok) {
-        void speakText(answer);
+        void speakText(answer, aiMsgId);
       }
     } catch {
       setMessages(prev => [
@@ -253,9 +313,9 @@ export function FloatingAiTutor({
       : status === 'thinking'
         ? 'กำลังคิด…'
         : status === 'loading_voice'
-          ? 'กำลังสร้างเสียง Gemini Voice…'
+          ? 'กำลังสร้างเสียง Google AI Studio…'
           : status === 'speaking'
-            ? `กำลังอ่านคำตอบ (${voiceEngine === 'gemini' ? 'Gemini Voice' : 'เสียงอุปกรณ์'})…`
+            ? `กำลังอ่านคำตอบ (${voiceEngine === 'gemini' ? `Google AI Studio • ${studioVoice}` : 'เสียงสำรอง'})…`
             : `โควตาวันนี้คงเหลือ ${remaining}/${dailyLimit} ครั้ง`;
 
   return (
@@ -271,18 +331,21 @@ export function FloatingAiTutor({
             <div className="min-w-0">
               <h3 className="font-heading font-bold text-base leading-tight inline-flex items-center gap-1.5">
                 <Zap className="w-4 h-4 shrink-0" />
-                ผู้ช่วย AI ตอบไว
+                ผู้ช่วย AI • Google Studio Voice
               </h3>
               <p className="text-xs text-white/90 mt-0.5 font-medium truncate">{statusLabel}</p>
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
               <button
                 type="button"
-                onClick={() => setVoiceMode(m => (m === 'fast' ? 'hd' : 'fast'))}
+                onClick={() => {
+                  stopSpeaking();
+                  setStudioVoice(v => (v === 'Kore' ? 'Puck' : 'Kore'));
+                }}
                 className="px-2 py-1.5 rounded-xl text-[11px] font-heading font-bold bg-white/20 text-white hover:bg-white/30 cursor-pointer transition"
-                title="สลับโหมดเสียงอ่าน: เร็วทันใจ vs เสียง Gemini HD"
+                title="สลับเสียง Google AI Studio: เสียงผู้หญิง (Kore) / เสียงผู้ชาย (Puck)"
               >
-                {voiceMode === 'fast' ? 'เสียงไว' : 'เสียง HD'}
+                {studioVoice === 'Kore' ? 'เสียงหญิง' : 'เสียงชาย'}
               </button>
               <button
                 type="button"
@@ -291,14 +354,13 @@ export function FloatingAiTutor({
                   setAutoSpeak(next);
                   if (!next) stopSpeaking();
                 }}
-                className={`px-2.5 py-1.5 rounded-xl text-xs font-heading font-bold inline-flex items-center gap-1 cursor-pointer transition ${
+                className={`px-2 py-1.5 rounded-xl text-xs font-heading font-bold inline-flex items-center gap-1 cursor-pointer transition ${
                   autoSpeak ? 'bg-white text-[var(--color-primary)]' : 'bg-white/20 text-white hover:bg-white/30'
                 }`}
                 aria-pressed={autoSpeak}
                 title="สวิตช์อ่านคำตอบอัตโนมัติ"
               >
                 {autoSpeak ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-                <span className="hidden xs:inline">อ่านอัตโนมัติ</span>
               </button>
               <button
                 type="button"
@@ -341,41 +403,51 @@ export function FloatingAiTutor({
                 ))}
               </div>
             )}
-            {messages.map(m => (
-              <div key={m.id} className={`flex ${m.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div
-                  className={`max-w-[88%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
-                    m.sender === 'user'
-                      ? 'bg-[var(--color-primary)] text-white rounded-br-sm'
-                      : 'bg-[var(--bg-surface)] text-[var(--text-primary)] border border-[var(--border-subtle)] rounded-bl-sm'
-                  }`}
-                >
-                  {m.text}
-                  {m.sender === 'ai' && (
-                    <div className="mt-2 pt-1.5 border-t border-[var(--border-subtle)] flex items-center gap-3">
-                      <button
-                        type="button"
-                        disabled={status === 'loading_voice'}
-                        onClick={() => void speakText(m.text)}
-                        className="text-xs font-heading font-semibold text-[var(--color-primary)] hover:underline inline-flex items-center gap-1 cursor-pointer disabled:opacity-50"
-                        aria-label="ฟังเสียงอ่าน AI"
-                      >
-                        <Volume2 className="w-3.5 h-3.5" /> ฟังเสียง AI
-                      </button>
-                      {(status === 'speaking' || status === 'loading_voice') && (
-                        <button
-                          type="button"
-                          onClick={stopSpeaking}
-                          className="text-xs font-semibold text-[var(--color-danger)] hover:underline inline-flex items-center gap-1 cursor-pointer"
-                        >
-                          <Square className="w-3 h-3 fill-current" /> หยุดอ่าน
-                        </button>
-                      )}
-                    </div>
-                  )}
+            {messages.map(m => {
+              const isThisLoading = speakingMsgId === m.id && status === 'loading_voice';
+              const isThisSpeaking = speakingMsgId === m.id && status === 'speaking';
+              return (
+                <div key={m.id} className={`flex ${m.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div
+                    className={`max-w-[88%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
+                      m.sender === 'user'
+                        ? 'bg-[var(--color-primary)] text-white rounded-br-sm'
+                        : 'bg-[var(--bg-surface)] text-[var(--text-primary)] border border-[var(--border-subtle)] rounded-bl-sm'
+                    }`}
+                  >
+                    {m.sender === 'ai' ? renderFormattedText(m.text) : m.text}
+                    {m.sender === 'ai' && (
+                      <div className="mt-2 pt-1.5 border-t border-[var(--border-subtle)] flex items-center gap-3">
+                        {isThisLoading ? (
+                          <span className="text-xs font-heading font-semibold text-[var(--color-primary)] inline-flex items-center gap-1.5">
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" /> กำลังสร้างเสียง Google Studio…
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => void speakText(m.text, m.id)}
+                            className="text-xs font-heading font-semibold text-[var(--color-primary)] hover:underline inline-flex items-center gap-1 cursor-pointer"
+                            aria-label="ฟังเสียงอ่าน AI"
+                          >
+                            <Volume2 className="w-3.5 h-3.5" />
+                            {isThisSpeaking ? 'กำลังอ่าน…' : 'ฟังเสียง AI'}
+                          </button>
+                        )}
+                        {(isThisSpeaking || isThisLoading) && (
+                          <button
+                            type="button"
+                            onClick={stopSpeaking}
+                            className="text-xs font-semibold text-[var(--color-danger)] hover:underline inline-flex items-center gap-1 cursor-pointer"
+                          >
+                            <Square className="w-3 h-3 fill-current" /> หยุดอ่าน
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
             {status === 'thinking' && (
               <div className="flex justify-start">
                 <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-2xl px-4 py-2.5 text-sm text-[var(--color-primary)] font-semibold animate-pulse">
@@ -426,7 +498,7 @@ export function FloatingAiTutor({
             </div>
             <div className="flex justify-between text-xs text-[var(--text-muted)] px-1">
               <span>{input.length}/500 ตัวอักษร</span>
-              <span>Gemini Voice (th-TH)</span>
+              <span>Google AI Studio Voice ({studioVoice})</span>
             </div>
           </form>
         </div>
@@ -438,7 +510,7 @@ export function FloatingAiTutor({
         onClick={() => setOpen(v => !v)}
         className="w-15 h-15 rounded-full bg-[var(--color-primary)] text-white shadow-xl border-2 border-white border-b-4 border-b-[var(--color-primary-shadow)] active:translate-y-1 transition flex items-center justify-center cursor-pointer"
         aria-label={open ? 'ปิดผู้ช่วย AI' : 'เปิดผู้ช่วย AI'}
-        title="ผู้ช่วย AI + เสียง Gemini Voice"
+        title="ผู้ช่วย AI + เสียง Google AI Studio"
       >
         {open ? <X className="w-7 h-7" /> : <Bot className="w-7 h-7" />}
       </button>
