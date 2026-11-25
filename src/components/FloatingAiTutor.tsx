@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Bot, X, Send, Mic, MicOff, Volume2, VolumeX, AlertCircle, Square, Zap, Loader2 } from 'lucide-react';
+import { X, Send, Mic, MicOff, Volume2, VolumeX, AlertCircle, Square, Loader2 } from 'lucide-react';
 
 interface ChatMessage {
   id: string;
@@ -13,6 +13,39 @@ interface FloatingAiTutorProps {
   externalPrompt?: { text: string; lessonTitle?: string; nonce: number } | null;
   initialRemaining?: number;
   dailyLimit?: number;
+}
+
+// โลโก้มาสคอตสีชมพูน่ารัก "ฮีลใจ-บอตแสนรู้"
+function HealjaiPinkBotIcon({ className = 'w-8 h-8' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 64 64" fill="none" className={className} aria-hidden="true">
+      {/* เสาอากาศหัวใจสีชมพู */}
+      <line x1="32" y1="15" x2="32" y2="21" stroke="#FFF1F7" strokeWidth="3" strokeLinecap="round" />
+      <path
+        d="M32 16.5C32 16.5 25.5 12.2 25.5 8.5C25.5 6.3 27.2 4.7 29.2 4.7C30.5 4.7 31.5 5.4 32 6.4C32.5 5.4 33.5 4.7 34.8 4.7C36.8 4.7 38.5 6.3 38.5 8.5C38.5 12.2 32 16.5 32 16.5Z"
+        fill="#FFE4F0"
+        stroke="#FFFFFF"
+        strokeWidth="1.5"
+      />
+      {/* หูกลมสองข้าง */}
+      <rect x="7" y="30" width="6" height="14" rx="3" fill="#FFD1E6" />
+      <rect x="51" y="30" width="6" height="14" rx="3" fill="#FFD1E6" />
+      {/* หัวหุ่นยนต์สีขาวอมชมพูพาสเทล */}
+      <rect x="12" y="20" width="40" height="33" rx="14" fill="#FFFFFF" stroke="#FFD1E6" strokeWidth="2.5" />
+      {/* หน้าจอใบหน้าสีชมพูเข้มน่ารัก */}
+      <rect x="17" y="26" width="30" height="20" rx="9" fill="#FF4D97" />
+      {/* ดวงตากลมประกายวิ้ง */}
+      <circle cx="25.5" cy="35" r="3.4" fill="#FFFFFF" />
+      <circle cx="24.6" cy="34" r="1.2" fill="#FF4D97" />
+      <circle cx="38.5" cy="35" r="3.4" fill="#FFFFFF" />
+      <circle cx="37.6" cy="34" r="1.2" fill="#FF4D97" />
+      {/* แก้มชมพูอ่อน */}
+      <ellipse cx="21" cy="39.5" rx="2.6" ry="1.5" fill="#FFC2DE" opacity="0.9" />
+      <ellipse cx="43" cy="39.5" rx="2.6" ry="1.5" fill="#FFC2DE" opacity="0.9" />
+      {/* รอยยิ้มฮีลใจ */}
+      <path d="M28.5 39.5C29.7 41.3 34.3 41.3 35.5 39.5" stroke="#FFFFFF" strokeWidth="2.2" strokeLinecap="round" />
+    </svg>
+  );
 }
 
 // แสดงข้อความที่มี **ตัวหนา** ให้สวยงาม ไม่แสดงเครื่องหมาย ** ดิบๆ
@@ -39,8 +72,7 @@ export function FloatingAiTutor({
   const [input, setInput] = useState('');
   const [status, setStatus] = useState<'idle' | 'listening' | 'thinking' | 'loading_voice' | 'speaking'>('idle');
   const [speakingMsgId, setSpeakingMsgId] = useState<string | null>(null);
-  const [studioVoice, setStudioVoice] = useState<'Kore' | 'Puck'>('Kore');
-  const [voiceEngine, setVoiceEngine] = useState<'gemini' | 'browser'>('gemini');
+  const [voiceEngine, setVoiceEngine] = useState<'free' | 'studio' | 'browser'>('free');
   const [autoSpeak, setAutoSpeak] = useState(false);
   const [remaining, setRemaining] = useState(initialRemaining);
   const [voiceWarning, setVoiceWarning] = useState('');
@@ -48,7 +80,7 @@ export function FloatingAiTutor({
     {
       id: 'welcome',
       sender: 'ai',
-      text: 'สวัสดีครับ! ผมคือผู้ช่วยสอน AI วิชาการออกแบบและเทคโนโลยี ม.4 พร้อมเสียงอ่าน Google AI Studio ภาษาไทย พิมพ์หรือแตะคำถามด่วนด้านล่างได้เลยครับ'
+      text: 'สวัสดีครับ! ผมคือ **ฮีลใจ-บอตแสนรู้** 💗 พร้อมอยู่เป็นเพื่อนช่วยติววิชาการออกแบบและเทคโนโลยี ม.4 ให้เข้าใจง่ายๆ พิมพ์หรือแตะคำถามด่วนด้านล่างได้เลยนะครับ'
     }
   ]);
 
@@ -112,12 +144,12 @@ export function FloatingAiTutor({
     setStatus(prev => (prev === 'speaking' || prev === 'loading_voice' ? 'idle' : prev));
   }
 
-  function playBlob(blob: Blob, msgId: string, fallbackText: string) {
+  function playBlob(blob: Blob, msgId: string, fallbackText: string, usedEngine: 'free' | 'studio') {
     const url = URL.createObjectURL(blob);
     audioUrlRef.current = url;
     const audio = new Audio(url);
     audioRef.current = audio;
-    setVoiceEngine('gemini');
+    setVoiceEngine(usedEngine);
     setSpeakingMsgId(msgId);
 
     audio.onplay = () => {
@@ -166,16 +198,16 @@ export function FloatingAiTutor({
     window.speechSynthesis.speak(utter);
   }
 
-  // ใช้เสียงจาก Google AI Studio (Gemini Neural TTS: /api/ai/tts) เป็นค่าเริ่มต้นทุกครั้ง + แคชไว้ฟังซ้ำทันที
+  // ใช้เสียงภาษาไทยฟรี (< 1 วินาที ไม่เสียเครดิต ไม่ตกคำ) เป็นค่าเริ่มต้น + แคชไว้เล่นซ้ำทันที
   async function speakText(text: string, msgId: string) {
     stopSpeaking();
     setVoiceWarning('');
     setSpeakingMsgId(msgId);
 
-    const cacheKey = `${studioVoice}::${msgId}`;
+    const cacheKey = `free::${msgId}`;
     const cachedBlob = audioCacheRef.current.get(cacheKey);
     if (cachedBlob) {
-      playBlob(cachedBlob, msgId, text);
+      playBlob(cachedBlob, msgId, text, 'free');
       return;
     }
 
@@ -188,17 +220,18 @@ export function FloatingAiTutor({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         signal: controller.signal,
-        body: JSON.stringify({ text, voice: studioVoice })
+        body: JSON.stringify({ text, engine: 'free' })
       });
 
       if (controller.signal.aborted) return;
 
       const contentType = res.headers.get('content-type') || '';
+      const serverEngine = res.headers.get('x-tts-engine') === 'google-ai-studio' ? 'studio' : 'free';
       if (res.ok && contentType.startsWith('audio/')) {
         const blob = await res.blob();
         if (controller.signal.aborted) return;
         audioCacheRef.current.set(cacheKey, blob);
-        playBlob(blob, msgId, text);
+        playBlob(blob, msgId, text, serverEngine);
         return;
       }
     } catch (err) {
@@ -206,7 +239,6 @@ export function FloatingAiTutor({
     }
 
     if (!controller.signal.aborted) {
-      setVoiceWarning('เสียง Google AI Studio กำลังหนาแน่น สลับใช้เสียงสำรองชั่วคราวครับ');
       speakWithBrowserFallback(text, msgId);
     }
   }
@@ -254,7 +286,7 @@ export function FloatingAiTutor({
         {
           id: `e-${Date.now()}`,
           sender: 'ai',
-          text: 'ไม่สามารถเชื่อมต่อผู้ช่วย AI ได้ชั่วคราว กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่อีกครั้งครับ'
+          text: 'ไม่สามารถเชื่อมต่อฮีลใจ-บอตแสนรู้ได้ชั่วคราว กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่อีกครั้งนะครับ'
         }
       ]);
       setStatus('idle');
@@ -311,11 +343,11 @@ export function FloatingAiTutor({
     status === 'listening'
       ? 'กำลังฟัง…'
       : status === 'thinking'
-        ? 'กำลังคิด…'
+        ? 'ฮีลใจกำลังคิด…'
         : status === 'loading_voice'
-          ? 'กำลังสร้างเสียง Google AI Studio…'
+          ? 'กำลังเตรียมเสียงภาษาไทย…'
           : status === 'speaking'
-            ? `กำลังอ่านคำตอบ (${voiceEngine === 'gemini' ? `Google AI Studio • ${studioVoice}` : 'เสียงสำรอง'})…`
+            ? `กำลังอ่านคำตอบ (${voiceEngine === 'browser' ? 'เสียงสำรอง' : 'เสียงไทยธรรมชาติ'})…`
             : `โควตาวันนี้คงเหลือ ${remaining}/${dailyLimit} ครั้ง`;
 
   return (
@@ -323,30 +355,23 @@ export function FloatingAiTutor({
       {open && (
         <div
           role="dialog"
-          aria-label="แผงแชทผู้ช่วย AI"
-          className="mb-3 w-[calc(100vw-1.5rem)] sm:w-[400px] h-[min(70dvh,540px)] tus-card overflow-hidden flex flex-col shadow-2xl border-2 border-[var(--color-primary-border)] animate-scale-pop"
+          aria-label="แผงแชทฮีลใจ-บอตแสนรู้"
+          className="mb-3 w-[calc(100vw-1.5rem)] sm:w-[400px] h-[min(70dvh,540px)] tus-card overflow-hidden flex flex-col shadow-2xl border-2 border-pink-300 dark:border-pink-700 animate-scale-pop"
         >
-          {/* Header */}
-          <div className="bg-[var(--color-primary)] text-white px-4 py-3 flex items-center justify-between gap-2">
-            <div className="min-w-0">
-              <h3 className="font-heading font-bold text-base leading-tight inline-flex items-center gap-1.5">
-                <Zap className="w-4 h-4 shrink-0" />
-                ผู้ช่วย AI • Google Studio Voice
-              </h3>
-              <p className="text-xs text-white/90 mt-0.5 font-medium truncate">{statusLabel}</p>
+          {/* Header สีชมพูสดใสน่ารัก */}
+          <div className="bg-gradient-to-r from-[#ec4899] via-[#f43f8e] to-[#d81b60] text-white px-4 py-3 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-10 h-10 rounded-full bg-white/20 border border-white/50 flex items-center justify-center shrink-0">
+                <HealjaiPinkBotIcon className="w-8 h-8" />
+              </div>
+              <div className="min-w-0">
+                <h3 className="font-heading font-bold text-base leading-tight truncate">
+                  ฮีลใจ-บอตแสนรู้
+                </h3>
+                <p className="text-xs text-white/95 mt-0.5 font-medium truncate">{statusLabel}</p>
+              </div>
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
-              <button
-                type="button"
-                onClick={() => {
-                  stopSpeaking();
-                  setStudioVoice(v => (v === 'Kore' ? 'Puck' : 'Kore'));
-                }}
-                className="px-2 py-1.5 rounded-xl text-[11px] font-heading font-bold bg-white/20 text-white hover:bg-white/30 cursor-pointer transition"
-                title="สลับเสียง Google AI Studio: เสียงผู้หญิง (Kore) / เสียงผู้ชาย (Puck)"
-              >
-                {studioVoice === 'Kore' ? 'เสียงหญิง' : 'เสียงชาย'}
-              </button>
               <button
                 type="button"
                 onClick={() => {
@@ -354,13 +379,14 @@ export function FloatingAiTutor({
                   setAutoSpeak(next);
                   if (!next) stopSpeaking();
                 }}
-                className={`px-2 py-1.5 rounded-xl text-xs font-heading font-bold inline-flex items-center gap-1 cursor-pointer transition ${
-                  autoSpeak ? 'bg-white text-[var(--color-primary)]' : 'bg-white/20 text-white hover:bg-white/30'
+                className={`px-2.5 py-1.5 rounded-xl text-xs font-heading font-bold inline-flex items-center gap-1 cursor-pointer transition ${
+                  autoSpeak ? 'bg-white text-[#d81b60]' : 'bg-white/20 text-white hover:bg-white/30'
                 }`}
                 aria-pressed={autoSpeak}
                 title="สวิตช์อ่านคำตอบอัตโนมัติ"
               >
                 {autoSpeak ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+                <span className="hidden xs:inline">อ่านออโต้</span>
               </button>
               <button
                 type="button"
@@ -369,7 +395,7 @@ export function FloatingAiTutor({
                   setOpen(false);
                 }}
                 className="p-2 rounded-xl bg-white/15 hover:bg-white/25 cursor-pointer"
-                aria-label="ปิดหน้าต่างผู้ช่วย AI"
+                aria-label="ปิดหน้าต่างฮีลใจ-บอตแสนรู้"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -396,7 +422,7 @@ export function FloatingAiTutor({
                     key={q}
                     type="button"
                     onClick={() => void sendMessage(q)}
-                    className="px-3 py-1.5 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-strong)] text-xs font-heading font-semibold text-[var(--color-primary)] hover:bg-[var(--color-primary-soft)] cursor-pointer transition text-left"
+                    className="px-3 py-1.5 rounded-xl bg-[var(--bg-surface)] border border-pink-300 dark:border-pink-800 text-xs font-heading font-semibold text-[#d81b60] dark:text-pink-300 hover:bg-pink-50 dark:hover:bg-pink-950/40 cursor-pointer transition text-left"
                   >
                     {q}
                   </button>
@@ -411,7 +437,7 @@ export function FloatingAiTutor({
                   <div
                     className={`max-w-[88%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
                       m.sender === 'user'
-                        ? 'bg-[var(--color-primary)] text-white rounded-br-sm'
+                        ? 'bg-gradient-to-r from-[#ec4899] to-[#d81b60] text-white rounded-br-sm'
                         : 'bg-[var(--bg-surface)] text-[var(--text-primary)] border border-[var(--border-subtle)] rounded-bl-sm'
                     }`}
                   >
@@ -419,18 +445,18 @@ export function FloatingAiTutor({
                     {m.sender === 'ai' && (
                       <div className="mt-2 pt-1.5 border-t border-[var(--border-subtle)] flex items-center gap-3">
                         {isThisLoading ? (
-                          <span className="text-xs font-heading font-semibold text-[var(--color-primary)] inline-flex items-center gap-1.5">
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" /> กำลังสร้างเสียง Google Studio…
+                          <span className="text-xs font-heading font-semibold text-[#d81b60] dark:text-pink-300 inline-flex items-center gap-1.5">
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" /> กำลังเตรียมเสียง…
                           </span>
                         ) : (
                           <button
                             type="button"
                             onClick={() => void speakText(m.text, m.id)}
-                            className="text-xs font-heading font-semibold text-[var(--color-primary)] hover:underline inline-flex items-center gap-1 cursor-pointer"
-                            aria-label="ฟังเสียงอ่าน AI"
+                            className="text-xs font-heading font-semibold text-[#d81b60] dark:text-pink-300 hover:underline inline-flex items-center gap-1 cursor-pointer"
+                            aria-label="ฟังเสียงฮีลใจ"
                           >
                             <Volume2 className="w-3.5 h-3.5" />
-                            {isThisSpeaking ? 'กำลังอ่าน…' : 'ฟังเสียง AI'}
+                            {isThisSpeaking ? 'กำลังอ่าน…' : 'ฟังเสียง'}
                           </button>
                         )}
                         {(isThisSpeaking || isThisLoading) && (
@@ -450,8 +476,8 @@ export function FloatingAiTutor({
             })}
             {status === 'thinking' && (
               <div className="flex justify-start">
-                <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-2xl px-4 py-2.5 text-sm text-[var(--color-primary)] font-semibold animate-pulse">
-                  กำลังคิด…
+                <div className="bg-[var(--bg-surface)] border border-pink-200 dark:border-pink-800 rounded-2xl px-4 py-2.5 text-sm text-[#d81b60] dark:text-pink-300 font-semibold animate-pulse">
+                  ฮีลใจกำลังคิด…
                 </div>
               </div>
             )}
@@ -472,7 +498,7 @@ export function FloatingAiTutor({
                 className={`w-11 h-11 rounded-xl border-2 flex items-center justify-center shrink-0 cursor-pointer transition ${
                   status === 'listening'
                     ? 'bg-[var(--color-danger)] text-white border-[var(--color-danger)] animate-pulse'
-                    : 'bg-[var(--bg-surface-muted)] text-[var(--color-primary)] border-[var(--border-strong)] hover:bg-[var(--color-primary-soft)]'
+                    : 'bg-pink-50 dark:bg-pink-950/40 text-[#d81b60] dark:text-pink-300 border-pink-300 dark:border-pink-800 hover:bg-pink-100'
                 }`}
                 aria-label={status === 'listening' ? 'หยุดฟังเสียง' : 'พูดถามด้วยเสียงภาษาไทย'}
                 title="พูดถามด้วยเสียงภาษาไทย"
@@ -484,13 +510,13 @@ export function FloatingAiTutor({
                 maxLength={500}
                 value={input}
                 onChange={e => setInput(e.target.value)}
-                placeholder={status === 'listening' ? 'กำลังฟังเสียงของคุณ…' : 'พิมพ์คำถามเรื่องบทเรียน...'}
+                placeholder={status === 'listening' ? 'กำลังฟังเสียงของคุณ…' : 'พิมพ์ถามฮีลใจได้เลย...'}
                 className="tus-input !min-h-[44px] !py-2 !text-base sm:!text-sm"
               />
               <button
                 type="submit"
                 disabled={status === 'thinking' || !input.trim() || remaining <= 0}
-                className="w-11 h-11 rounded-xl bg-[var(--color-primary)] text-white flex items-center justify-center shrink-0 cursor-pointer disabled:opacity-50"
+                className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#ec4899] to-[#d81b60] text-white flex items-center justify-center shrink-0 cursor-pointer disabled:opacity-50"
                 aria-label="ส่งคำถาม"
               >
                 <Send className="w-5 h-5" />
@@ -498,21 +524,30 @@ export function FloatingAiTutor({
             </div>
             <div className="flex justify-between text-xs text-[var(--text-muted)] px-1">
               <span>{input.length}/500 ตัวอักษร</span>
-              <span>Google AI Studio Voice ({studioVoice})</span>
+              <span>เสียงไทยธรรมชาติ (ฟรี • อ่านไว)</span>
             </div>
           </form>
         </div>
       )}
 
-      {/* ปุ่มไอคอนกลมมุมล่างขวา */}
+      {/* ปุ่มโลโก้บอตสีชมพูกลมมุมล่างขวา */}
       <button
         type="button"
         onClick={() => setOpen(v => !v)}
-        className="w-15 h-15 rounded-full bg-[var(--color-primary)] text-white shadow-xl border-2 border-white border-b-4 border-b-[var(--color-primary-shadow)] active:translate-y-1 transition flex items-center justify-center cursor-pointer"
-        aria-label={open ? 'ปิดผู้ช่วย AI' : 'เปิดผู้ช่วย AI'}
-        title="ผู้ช่วย AI + เสียง Google AI Studio"
+        className="relative w-15 h-15 rounded-full bg-gradient-to-br from-[#ff7eb6] via-[#f43f8e] to-[#d81b60] text-white shadow-xl border-2 border-white border-b-4 border-b-[#9d174d] active:translate-y-1 transition flex items-center justify-center cursor-pointer overflow-visible"
+        aria-label={open ? 'ปิดฮีลใจ-บอตแสนรู้' : 'เปิดฮีลใจ-บอตแสนรู้'}
+        title="ฮีลใจ-บอตแสนรู้"
       >
-        {open ? <X className="w-7 h-7" /> : <Bot className="w-7 h-7" />}
+        {open ? (
+          <X className="w-7 h-7" />
+        ) : (
+          <>
+            <HealjaiPinkBotIcon className="w-10 h-10" />
+            <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 px-1.5 py-0.5 rounded-full bg-[#ec4899] text-white text-[9px] font-heading font-bold whitespace-nowrap shadow border border-white/80">
+              ฮีลใจ
+            </span>
+          </>
+        )}
       </button>
     </div>
   );
