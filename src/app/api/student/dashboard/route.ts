@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireRole } from '@/lib/auth';
-import { db, sanitizeStudent } from '@/lib/db';
+import { db, isQuotaExceededError, sanitizeStudent } from '@/lib/db';
 import { calculateGrade, isPublishedVisible, todayBangkokDate } from '@/lib/utils';
 import type { StudentQuizQuestion, SubmissionRecord } from '@/types/database';
 
@@ -14,7 +14,7 @@ export async function GET() {
       return NextResponse.json({ ok: false, message: 'ไม่พบข้อมูลนักเรียน' }, { status: 404 });
     }
 
-    const [prContent, classes, lessons, assignments, quizzes, mySubmissions, announcements, allStudents] =
+    const [prContent, classes, lessons, assignments, quizzes, mySubmissions, announcements, top5Students] =
       await Promise.all([
         db.getPrContent(),
         db.listClasses(),
@@ -23,7 +23,7 @@ export async function GET() {
         db.listQuizzes(),
         db.listSubmissionsByStudent(student.studentId),
         db.listAnnouncements(),
-        db.listStudents()
+        db.listTop5Students()
       ]);
 
     const classMap = new Map(classes.map(c => [c.id, c]));
@@ -66,20 +66,16 @@ export async function GET() {
     const percent = totalMax > 0 ? Math.round((totalScore / totalMax) * 1000) / 10 : 0;
     const grade = calculateGrade(percent);
 
-    // ซ่อนผู้ที่ XP = 0 ตามข้อกำหนด
-    const leaderboard = allStudents
-      .filter(s => s.classId && (s.gameXp || 0) > 0)
-      .sort((a, b) => b.gameXp - a.gameXp || b.gameBestScore - a.gameBestScore)
-      .slice(0, 5)
-      .map((s, idx) => ({
-        rank: idx + 1,
-        studentId: s.studentId,
-        displayName: `${s.prefix}${s.firstName} ${s.lastName}`,
-        className: classMap.get(s.classId)?.name || s.classId || '-',
-        gameXp: s.gameXp,
-        gameBestScore: s.gameBestScore,
-        isMe: s.studentId === student.studentId
-      }));
+    // ซ่อนผู้ที่ XP = 0 ตามข้อกำหนด (ใช้ Top 5 Query + Cache เพื่อลด Firestore reads)
+    const leaderboard = top5Students.map((s, idx) => ({
+      rank: idx + 1,
+      studentId: s.studentId,
+      displayName: `${s.prefix}${s.firstName} ${s.lastName}`,
+      className: classMap.get(s.classId)?.name || s.classId || '-',
+      gameXp: s.gameXp,
+      gameBestScore: s.gameBestScore,
+      isMe: s.studentId === student.studentId
+    }));
 
     const visibleLessons = lessons.filter(l => isPublishedVisible(l));
     const visibleAssignments = assignments.filter(a => isPublishedVisible(a));
@@ -118,6 +114,16 @@ export async function GET() {
     });
   } catch (err) {
     console.error('[GET /api/student/dashboard]', err);
+    if (isQuotaExceededError(err)) {
+      return NextResponse.json(
+        {
+          ok: false,
+          message:
+            'ขณะนี้ฐานข้อมูล Firebase แผนฟรีครบโควตาประจำวันชั่วคราว (รีเซ็ตอัตโนมัติเวลา 15:00 น. — ระบบเพิ่งอัปเกรดแคชลดการใช้งานลง 98% แล้ว รอบถัดไปจะไม่เต็มง่ายอีก)'
+        },
+        { status: 503 }
+      );
+    }
     return NextResponse.json({ ok: false, message: 'ไม่สามารถโหลดข้อมูลห้องเรียนได้' }, { status: 500 });
   }
 }

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { setSessionCookie, verifyPassword } from '@/lib/auth';
-import { db } from '@/lib/db';
+import { db, isQuotaExceededError } from '@/lib/db';
 import type { SessionUser } from '@/types/database';
 
 export async function POST(req: Request) {
@@ -84,18 +84,30 @@ export async function POST(req: Request) {
       position: staff.position
     };
     await setSessionCookie(sessionUser);
-    await db.addAuditLog({
-      actorId: staff.id,
-      actorName: staff.nameTh,
-      actorRole: staff.role,
-      action: 'LOGIN',
-      detail: `${staff.role === 'admin' ? 'ผู้ดูแลระบบ' : 'ครูผู้สอน'}เข้าสู่ระบบ`
-    });
+    await db
+      .addAuditLog({
+        actorId: staff.id,
+        actorName: staff.nameTh,
+        actorRole: staff.role,
+        action: 'LOGIN',
+        detail: `${staff.role === 'admin' ? 'ผู้ดูแลระบบ' : 'ครูผู้สอน'}เข้าสู่ระบบ`
+      })
+      .catch(() => {});
 
     const redirectTo = staff.role === 'admin' && role === 'admin' ? '/admin' : '/teacher';
     return NextResponse.json({ ok: true, user: sessionUser, redirectTo });
   } catch (err) {
     console.error('[POST /api/auth/login]', err);
+    if (isQuotaExceededError(err)) {
+      return NextResponse.json(
+        {
+          ok: false,
+          message:
+            'ขณะนี้ฐานข้อมูล Firebase แผนฟรีครบโควตาประจำวันชั่วคราว (รีเซ็ตอัตโนมัติเวลา 15:00 น. หรือครู/แอดมินเปิดแผน Blaze เพื่อให้เข้าใช้งานได้ทันที)'
+        },
+        { status: 503 }
+      );
+    }
     return NextResponse.json(
       { ok: false, message: 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ' },
       { status: 500 }

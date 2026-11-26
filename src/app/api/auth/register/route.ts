@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { hashPassword, setSessionCookie } from '@/lib/auth';
-import { db } from '@/lib/db';
+import { db, isQuotaExceededError } from '@/lib/db';
 import type { SessionUser, StudentRecord } from '@/types/database';
 
 export async function POST(req: Request) {
@@ -89,6 +89,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, user: sessionUser, redirectTo: '/student' });
   } catch (err) {
     console.error('[POST /api/auth/register]', err);
+    if (isQuotaExceededError(err)) {
+      return NextResponse.json(
+        {
+          ok: false,
+          message:
+            'ขณะนี้ฐานข้อมูล Firebase แผนฟรีครบโควตาประจำวันชั่วคราว (รีเซ็ตอัตโนมัติเวลา 15:00 น. หรือให้ครูเปิดแผน Blaze)'
+        },
+        { status: 503 }
+      );
+    }
     return NextResponse.json(
       { ok: false, message: 'ไม่สามารถสมัครสมาชิกได้ในขณะนี้' },
       { status: 500 }
