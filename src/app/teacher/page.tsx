@@ -53,7 +53,7 @@ import { TeacherGradeSheetCard } from '@/components/TeacherGradeSheetCard';
 import { TeacherXpManager } from '@/components/TeacherXpManager';
 import { TeacherIssueReports } from '@/components/TeacherIssueReports';
 import { useToast } from '@/components/ToastProvider';
-import { calculateGrade, copyTextSafe } from '@/lib/utils';
+import { calculateGrade, copyTextSafe, generateClassCode } from '@/lib/utils';
 import type {
   Assignment,
   ClassRoom,
@@ -95,7 +95,7 @@ interface TeacherOverviewData {
 
 type SidebarView = 'home' | 'calendar' | 'course' | 'line' | 'issues' | 'xp' | 'archived' | 'settings';
 type CourseTab = 'stream' | 'classwork' | 'forms' | 'people' | 'grades' | 'line' | 'issues' | 'xp';
-type CreateModalType = 'line' | 'form' | 'question' | 'lesson' | 'topic' | 'reuse' | 'ai' | null;
+type CreateModalType = 'class' | 'line' | 'form' | 'question' | 'lesson' | 'topic' | 'reuse' | 'ai' | null;
 
 export default function TeacherPortalPage() {
   const { showToast } = useToast();
@@ -151,6 +151,7 @@ export default function TeacherPortalPage() {
   // People & Class Creation
   const [newGrade, setNewGrade] = useState('ม.4');
   const [newRoom, setNewRoom] = useState('4');
+  const [newClassCode, setNewClassCode] = useState(() => generateClassCode());
   const [newStId, setNewStId] = useState('');
   const [newStPrefix, setNewStPrefix] = useState('นาย');
   const [newStFirst, setNewStFirst] = useState('');
@@ -356,7 +357,7 @@ export default function TeacherPortalPage() {
     await loadData();
   }
 
-  async function handleCreateClass(e: React.FormEvent) {
+  async function handleCreateClass(e: React.FormEvent, usePreviewCode = false) {
     e.preventDefault();
     const res = await fetch('/api/teacher/classes', {
       method: 'POST',
@@ -365,7 +366,8 @@ export default function TeacherPortalPage() {
         gradeLevel: newGrade,
         roomNo: newRoom,
         courseCode: data?.courseOverview.courseCode,
-        courseName: data?.courseOverview.courseNameTh
+        courseName: data?.courseOverview.courseNameTh,
+        classCode: usePreviewCode ? newClassCode.trim().toUpperCase() : ''
       })
     });
     const json = await res.json();
@@ -373,6 +375,8 @@ export default function TeacherPortalPage() {
       showToast(json.message || 'สร้างห้องเรียนไม่สำเร็จ', { kind: 'error' });
       return;
     }
+    setCreateModal(null);
+    setNewClassCode(generateClassCode());
     showToast(`สร้างห้อง ${json.classRoom.name} รหัส ${json.classRoom.classCode} เรียบร้อย`, { kind: 'success' });
     await loadData();
   }
@@ -715,6 +719,7 @@ export default function TeacherPortalPage() {
         {createMenuOpen && (
           <div className="mt-2 tus-card p-2 space-y-1 shadow-xl animate-scale-pop z-30 relative">
             {[
+              { id: 'class' as const, label: '+ สร้างห้องเรียนใหม่ (สุ่มรหัสคลาส)' },
               { id: 'line' as const, label: 'งาน (ส่งใน LINE)' },
               { id: 'form' as const, label: 'แบบทดสอบ (Quiz)' },
               { id: 'question' as const, label: 'คำถามชวนคิด' },
@@ -728,6 +733,7 @@ export default function TeacherPortalPage() {
                 type="button"
                 onClick={() => {
                   setCreateMenuOpen(false);
+                  if (opt.id === 'class') setNewClassCode(generateClassCode());
                   setCreateModal(opt.id);
                   setMobileMenuOpen(false);
                 }}
@@ -1043,26 +1049,84 @@ export default function TeacherPortalPage() {
           >
             <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3">
               <h3 className="font-heading font-bold text-lg text-[var(--text-primary)]">
-                {createModal === 'line'
-                  ? 'สร้างใบงาน (ส่งใน LINE)'
-                  : createModal === 'form'
-                    ? 'สร้างแบบทดสอบ (Quiz)'
-                    : createModal === 'question'
-                      ? 'สร้างคำถามชวนคิด'
-                      : createModal === 'lesson'
-                        ? 'เพิ่มเนื้อหา / สไลด์บทเรียน'
-                        : createModal === 'topic'
-                          ? 'สร้างหัวข้อใหม่ (Topic)'
-                          : createModal === 'reuse'
-                            ? 'เลือกใช้โพสต์เดิมซ้ำ'
-                            : 'ร่างเนื้อหาการสอนด้วย AI (Gemini)'}
+                {createModal === 'class'
+                  ? 'สร้างห้องเรียนใหม่ (สุ่มรหัสคลาส)'
+                  : createModal === 'line'
+                    ? 'สร้างใบงาน (ส่งใน LINE)'
+                    : createModal === 'form'
+                      ? 'สร้างแบบทดสอบ (Quiz)'
+                      : createModal === 'question'
+                        ? 'สร้างคำถามชวนคิด'
+                        : createModal === 'lesson'
+                          ? 'เพิ่มเนื้อหา / สไลด์บทเรียน'
+                          : createModal === 'topic'
+                            ? 'สร้างหัวข้อใหม่ (Topic)'
+                            : createModal === 'reuse'
+                              ? 'เลือกใช้โพสต์เดิมซ้ำ'
+                              : 'ร่างเนื้อหาการสอนด้วย AI (Gemini)'}
               </h3>
               <button type="button" onClick={() => setCreateModal(null)} className="p-2 cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {createModal === 'reuse' ? (
+            {createModal === 'class' ? (
+              <form onSubmit={e => void handleCreateClass(e, true)} className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-heading font-semibold text-[var(--text-secondary)] mb-1">
+                      ระดับชั้น
+                    </label>
+                    <select value={newGrade} onChange={e => setNewGrade(e.target.value)} className="tus-input">
+                      {['ม.1', 'ม.2', 'ม.3', 'ม.4', 'ม.5', 'ม.6'].map(g => (
+                        <option key={g} value={g}>{g}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-heading font-semibold text-[var(--text-secondary)] mb-1">
+                      ห้อง (1–15)
+                    </label>
+                    <select value={newRoom} onChange={e => setNewRoom(e.target.value)} className="tus-input">
+                      {Array.from({ length: 15 }, (_, i) => String(i + 1)).map(r => (
+                        <option key={r} value={r}>ห้อง {r}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-[var(--bg-surface-muted)] border border-[var(--border-strong)] space-y-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-heading font-bold text-[var(--text-secondary)]">
+                      รหัสเข้าห้องเรียนแบบสุ่ม (ให้นักเรียนกรอกเพื่อเข้าห้อง {newGrade}/{newRoom})
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setNewClassCode(generateClassCode())}
+                      className="btn-secondary-3d btn-compact-3d"
+                    >
+                      <RefreshCw className="w-4 h-4" /> สุ่มรหัสใหม่
+                    </button>
+                  </div>
+                  <input
+                    type="text"
+                    value={newClassCode}
+                    onChange={e => setNewClassCode(e.target.value.toUpperCase())}
+                    placeholder="เช่น TUS-8K4P"
+                    className="tus-input font-mono font-extrabold text-center text-xl tracking-widest uppercase text-[var(--color-primary)]"
+                  />
+                </div>
+
+                <div className="flex justify-end gap-2 pt-1">
+                  <button type="button" onClick={() => setCreateModal(null)} className="btn-secondary-3d">
+                    ยกเลิก
+                  </button>
+                  <button type="submit" className="btn-primary-3d">
+                    <Plus className="w-5 h-5" /> สร้างห้อง {newGrade}/{newRoom} และใช้รหัสนี้
+                  </button>
+                </div>
+              </form>
+            ) : createModal === 'reuse' ? (
               <div className="space-y-2.5">
                 {data.announcements.map(p => (
                   <button
@@ -1313,15 +1377,34 @@ export default function TeacherPortalPage() {
                 <h1 className="font-heading font-bold text-2xl text-[var(--text-primary)]">
                   ชั้นเรียนที่ฉันสอน ({activeClasses.length} ห้อง)
                 </h1>
-                <button type="button" onClick={() => setSidebarView('line')} className="btn-secondary-3d btn-compact-3d">
-                  <CheckSquare className="w-4 h-4" /> ตรวจงาน LINE ({pendingLineCount})
-                </button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNewClassCode(generateClassCode());
+                      setCreateModal('class');
+                    }}
+                    className="btn-primary-3d btn-compact-3d"
+                  >
+                    <Plus className="w-4 h-4" /> สร้างห้องเรียนใหม่ (สุ่มรหัส)
+                  </button>
+                  <button type="button" onClick={() => setSidebarView('line')} className="btn-secondary-3d btn-compact-3d">
+                    <CheckSquare className="w-4 h-4" /> ตรวจงาน LINE ({pendingLineCount})
+                  </button>
+                </div>
               </div>
               {activeClasses.length === 0 ? (
                 <div className="tus-card p-10 text-center space-y-3">
                   <p className="font-heading font-bold text-lg">ยังไม่มีชั้นเรียนที่เปิดสอน</p>
-                  <button type="button" onClick={() => setSidebarView('settings')} className="btn-primary-3d">
-                    สร้างห้องเรียนใหม่
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNewClassCode(generateClassCode());
+                      setCreateModal('class');
+                    }}
+                    className="btn-primary-3d"
+                  >
+                    <Plus className="w-5 h-5" /> สร้างห้องเรียนใหม่และสุ่มรหัสคลาส
                   </button>
                 </div>
               ) : (
@@ -1330,8 +1413,8 @@ export default function TeacherPortalPage() {
                     const count = data.students.filter(s => s.classId === cls.id).length;
                     return (
                       <div key={cls.id} className="tus-card tus-card-hover p-5 flex flex-col justify-between gap-4">
-                        <div>
-                          <div className="flex items-center justify-between">
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between gap-2">
                             <span className="font-heading font-extrabold text-xl text-[var(--color-primary)]">
                               ห้อง {cls.name}
                             </span>
@@ -1339,17 +1422,71 @@ export default function TeacherPortalPage() {
                               {cls.classCode}
                             </span>
                           </div>
-                          <p className="text-sm text-[var(--text-secondary)] mt-1">
-                            {cls.courseCode} {cls.courseName}
-                          </p>
-                          <p className="text-xs text-[var(--text-muted)] mt-1">นักเรียน {count} คน</p>
+                          <div>
+                            <p className="text-sm text-[var(--text-secondary)]">
+                              {cls.courseCode} {cls.courseName}
+                            </p>
+                            <p className="text-xs text-[var(--text-muted)] mt-0.5">นักเรียน {count} คน</p>
+                          </div>
+
+                          {/* ปุ่มลัดจัดการรหัสคลาสบนการ์ดห้องเรียน */}
+                          <div className="flex flex-wrap gap-1.5 pt-1">
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                await copyTextSafe(cls.classCode);
+                                showToast(`คัดลอกรหัสห้อง ${cls.name}: ${cls.classCode} แล้ว`, { kind: 'success' });
+                              }}
+                              className="px-2.5 py-1.5 rounded-xl bg-[var(--bg-surface-muted)] border border-[var(--border-subtle)] hover:border-[var(--color-primary)] text-xs font-heading font-semibold inline-flex items-center gap-1 cursor-pointer transition"
+                              title="คัดลอกรหัสห้องเรียน"
+                            >
+                              <Copy className="w-3.5 h-3.5 text-[var(--color-primary)]" /> คัดลอก
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void handleClassAction(cls.id, 'regenerate_code')}
+                              className="px-2.5 py-1.5 rounded-xl bg-[var(--bg-surface-muted)] border border-[var(--border-subtle)] hover:border-[var(--color-primary)] text-xs font-heading font-semibold inline-flex items-center gap-1 cursor-pointer transition"
+                              title="สุ่มรหัสห้องเรียนใหม่"
+                            >
+                              <RefreshCw className="w-3.5 h-3.5 text-[var(--color-primary)]" /> สุ่มรหัสใหม่
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setFullscreenClass(cls)}
+                              className="px-2.5 py-1.5 rounded-xl bg-[var(--bg-surface-muted)] border border-[var(--border-subtle)] hover:border-[var(--color-primary)] text-xs font-heading font-semibold inline-flex items-center gap-1 cursor-pointer transition"
+                              title="ฉายรหัสห้องเรียนเต็มจอหน้าห้อง"
+                            >
+                              <Maximize2 className="w-3.5 h-3.5 text-[var(--color-primary)]" /> เต็มจอ
+                            </button>
+                          </div>
                         </div>
+
                         <button type="button" onClick={() => openClass(cls.id)} className="btn-secondary-3d btn-compact-3d w-full">
                           เข้าจัดการห้องเรียน
                         </button>
                       </div>
                     );
                   })}
+
+                  {/* การ์ดลัด "+ สร้างห้องเรียนใหม่" */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNewClassCode(generateClassCode());
+                      setCreateModal('class');
+                    }}
+                    className="rounded-3xl border-2 border-dashed border-[var(--border-strong)] bg-[var(--bg-surface-muted)]/60 hover:border-[var(--color-primary)] hover:bg-[var(--color-primary-soft)]/50 p-6 flex flex-col items-center justify-center gap-2.5 text-center cursor-pointer transition min-h-[190px]"
+                  >
+                    <div className="w-12 h-12 rounded-2xl bg-[var(--color-primary-soft)] text-[var(--color-primary)] border border-[var(--color-primary-border)] flex items-center justify-center">
+                      <Plus className="w-6 h-6" />
+                    </div>
+                    <div className="font-heading font-bold text-base text-[var(--color-primary)]">
+                      สร้างห้องเรียนใหม่
+                    </div>
+                    <p className="text-xs text-[var(--text-secondary)]">
+                      เลือกระดับชั้น-ห้อง พร้อมสุ่มรหัสเข้าห้องเรียนอัตโนมัติ
+                    </p>
+                  </button>
                 </div>
               )}
             </div>
