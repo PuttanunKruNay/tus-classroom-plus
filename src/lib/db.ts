@@ -74,6 +74,22 @@ const COLLECTION_TTL_MS: Partial<Record<CollectionName, number>> = {
 
 const collectionCache = new Map<string, { data: unknown; expiresAt: number }>();
 const docCache = new Map<string, { data: unknown; expiresAt: number }>();
+let quotaBlockedUntil = 0;
+
+function assertQuotaNotBlocked() {
+  if (quotaBlockedUntil > Date.now()) {
+    const err = new Error('8 RESOURCE_EXHAUSTED: Quota exceeded (circuit breaker)');
+    (err as unknown as { code: number }).code = 8;
+    throw err;
+  }
+}
+
+function noteFirestoreError(err: unknown) {
+  if (isQuotaExceededError(err)) {
+    // ตัดวงจรรอ gRPC retry 15 วินาทีซ้ำๆ ชั่วคราว 60 วินาที แล้วจะลองเชื่อมต่อให้อัตโนมัติใหม่
+    quotaBlockedUntil = Date.now() + 60 * 1000;
+  }
+}
 
 function invalidateCollectionCache(col: CollectionName, docId?: string) {
   collectionCache.delete(col);
@@ -189,7 +205,7 @@ async function ensureInitialized(): Promise<void> {
   }
 }
 
-// Generic low-level collection operations (พร้อม TTL Cache ลดการอ่าน Firestore ลง >95%)
+// Generic low-level collection operations (พร้อม TTL Cache + Quota Circuit Breaker ไม่ให้หน่วง 15 วิ)
 async function getAllDocs<T>(col: CollectionName): Promise<T[]> {
   await ensureInitialized();
   const fsDb = getAdminFirestore();
@@ -201,12 +217,21 @@ async function getAllDocs<T>(col: CollectionName): Promise<T[]> {
         return cached.data as T[];
       }
     }
-    const snap = await fsDb.collection(col).get();
-    const rows = snap.docs.map(d => d.data() as T);
-    if (ttl) {
-      collectionCache.set(col, { data: rows, expiresAt: Date.now() + ttl });
+    assertQuotaNotBlocked();
+    try {
+      const snap = await fsDb.collection(col).get();
+      const rows = snap.docs.map(d => d.data() as T);
+      if (ttl) {
+        collectionCache.set(col, { data: rows, expiresAt: Date.now() + ttl });
+      }
+      return rows;
+    } catch (err) {
+      noteFirestoreError(err);
+      // ถ้าเคยมีแคชเดิมอยู่ ให้คืนแคชเก่าไปก่อนแทนที่จะล่ม
+      const stale = collectionCache.get(col);
+      if (stale) return stale.data as T[];
+      throw err;
     }
-    return rows;
   }
   const store = await readLocalStore();
   return Object.values(store[col]) as unknown as T[];
@@ -224,12 +249,20 @@ async function getDocById<T>(col: CollectionName, id: string): Promise<T | null>
         return cached.data as T | null;
       }
     }
-    const snap = await fsDb.collection(col).doc(id).get();
-    const val = snap.exists ? (snap.data() as T) : null;
-    if (ttl) {
-      docCache.set(cacheKey, { data: val, expiresAt: Date.now() + ttl });
+    assertQuotaNotBlocked();
+    try {
+      const snap = await fsDb.collection(col).doc(id).get();
+      const val = snap.exists ? (snap.data() as T) : null;
+      if (ttl) {
+        docCache.set(cacheKey, { data: val, expiresAt: Date.now() + ttl });
+      }
+      return val;
+    } catch (err) {
+      noteFirestoreError(err);
+      const stale = docCache.get(cacheKey);
+      if (stale) return stale.data as T | null;
+      throw err;
     }
-    return val;
   }
   const store = await readLocalStore();
   return ((store[col] as Record<string, unknown>)[id] as T) || null;
@@ -240,8 +273,14 @@ async function setDocById<T>(col: CollectionName, id: string, data: T): Promise<
   invalidateCollectionCache(col, id);
   const fsDb = getAdminFirestore();
   if (fsDb) {
-    await fsDb.collection(col).doc(id).set(data as FirebaseFirestore.DocumentData, { merge: false });
-    return;
+    assertQuotaNotBlocked();
+    try {
+      await fsDb.collection(col).doc(id).set(data as FirebaseFirestore.DocumentData, { merge: false });
+      return;
+    } catch (err) {
+      noteFirestoreError(err);
+      throw err;
+    }
   }
   const store = await readLocalStore();
   (store[col] as Record<string, unknown>)[id] = data;
@@ -253,8 +292,14 @@ async function deleteDocById(col: CollectionName, id: string): Promise<void> {
   invalidateCollectionCache(col, id);
   const fsDb = getAdminFirestore();
   if (fsDb) {
-    await fsDb.collection(col).doc(id).delete();
-    return;
+    assertQuotaNotBlocked();
+    try {
+      await fsDb.collection(col).doc(id).delete();
+      return;
+    } catch (err) {
+      noteFirestoreError(err);
+      throw err;
+    }
   }
   const store = await readLocalStore();
   delete (store[col] as Record<string, unknown>)[id];
@@ -415,18 +460,25 @@ export const db = {
       if (cached && cached.expiresAt > Date.now()) {
         return cached.data as StudentRecord[];
       }
-      const snap = await fsDb
-        .collection('students')
-        .where('gameXp', '>', 0)
-        .orderBy('gameXp', 'desc')
-        .limit(10)
-        .get();
-      const rows = snap.docs
-        .map(d => d.data() as StudentRecord)
-        .filter(s => Boolean(s.classId))
-        .slice(0, 5);
-      collectionCache.set('__top5_students__', { data: rows, expiresAt: Date.now() + 60 * 1000 });
-      return rows;
+      assertQuotaNotBlocked();
+      try {
+        const snap = await fsDb
+          .collection('students')
+          .where('gameXp', '>', 0)
+          .orderBy('gameXp', 'desc')
+          .limit(10)
+          .get();
+        const rows = snap.docs
+          .map(d => d.data() as StudentRecord)
+          .filter(s => Boolean(s.classId))
+          .slice(0, 5);
+        collectionCache.set('__top5_students__', { data: rows, expiresAt: Date.now() + 60 * 1000 });
+        return rows;
+      } catch (err) {
+        noteFirestoreError(err);
+        if (cached) return cached.data as StudentRecord[];
+        throw err;
+      }
     }
     const all = await getAllDocs<StudentRecord>('students');
     return all

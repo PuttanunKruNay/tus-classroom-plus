@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tus-classroom-v3';
+const CACHE_NAME = 'tus-classroom-v4';
 const PRECACHE_ASSETS = [
   '/',
   '/manifest.json',

@@ -10,7 +10,7 @@ export function SakuraDecoration() {
   ];
 
   return (
-    <div aria-hidden="true" className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+    <div aria-hidden="true" className="hidden md:block pointer-events-none fixed inset-0 -z-10 overflow-hidden">
       {/* Soft Pink-Blush Aurora Orbs */}
       <div className="ambient-orb-1 absolute -top-28 -left-24 w-80 h-80 sm:w-[440px] sm:h-[440px] rounded-full bg-pink-300/30 blur-3xl" />
       <div className="ambient-orb-2 absolute top-1/4 -right-28 w-80 h-80 sm:w-[460px] sm:h-[460px] rounded-full bg-rose-300/25 blur-3xl" />

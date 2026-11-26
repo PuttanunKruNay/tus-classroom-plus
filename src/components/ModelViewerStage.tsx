@@ -263,7 +263,14 @@ export function ModelViewerStage({
   function onPointerDown(e: React.PointerEvent<HTMLDivElement>) {
     // Ignore pointer starts on buttons (hotspots / toolbar)
     if ((e.target as HTMLElement).closest('button')) return;
-    e.currentTarget.setPointerCapture(e.pointerId);
+    // ห้าม setPointerCapture บน touch เพื่อไม่ให้แย่งนิ้วเลื่อนหน้าจอแนวตั้งบน Android/iOS
+    if (e.pointerType !== 'touch') {
+      try {
+        e.currentTarget.setPointerCapture(e.pointerId);
+      } catch {
+        // ignore
+      }
+    }
     setIsDragging(true);
     setAutoOrbit(false);
     setIsFocusedPin(false);
@@ -325,7 +332,7 @@ export function ModelViewerStage({
         onPointerUp={!show3D ? onPointerUp : undefined}
         onPointerCancel={!show3D ? onPointerUp : undefined}
         className={`relative w-full aspect-[4/3] rounded-3xl overflow-hidden border-2 border-[var(--color-primary-border)] shadow-lg select-none ${
-          !show3D ? (isDragging ? 'cursor-grabbing touch-none' : 'cursor-grab touch-none') : ''
+          !show3D ? (isDragging ? 'cursor-grabbing touch-pan-y' : 'cursor-grab touch-pan-y') : ''
         }`}
         style={{
           background:

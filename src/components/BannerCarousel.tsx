@@ -73,19 +73,14 @@ export function BannerCarousel({ banners, loading }: BannerCarouselProps) {
       onTouchEnd={handleTouchEnd}
       className="tus-card overflow-hidden relative select-none"
     >
-      {/* 16:9 บนมือถือ, 21:9 บนคอม + object-fit: contain พร้อมรูปเดียวกันเบลอเป็นพื้นหลัง ไม่ตัดภาพขาด */}
-      <div className="relative w-full aspect-[16/9] md:aspect-[21/9] bg-black/90 overflow-hidden">
-        <img
-          src={current.imageUrl}
-          alt=""
-          aria-hidden="true"
-          className="absolute inset-0 w-full h-full object-cover blur-2xl scale-110 opacity-65 pointer-events-none"
-        />
+      {/* 16:9 บนมือถือ, 21:9 บนคอม + พื้นหลังเกรเดียนต์ลื่น 60fps ไม่ใช้ GPU blur-2xl */}
+      <div className="relative w-full aspect-[16/9] md:aspect-[21/9] bg-gradient-to-br from-[#2d0f1d] via-[#1a0b12] to-[#321222] overflow-hidden">
         <img
           key={current.id}
           src={current.imageUrl}
           alt={current.title}
-          className="relative z-10 w-full h-full object-contain animate-scale-pop"
+          decoding="async"
+          className="relative z-10 w-full h-full object-contain"
         />
 
         {/* แถบเกรเดียนต์ดำด้านล่างให้อ่านข้อความคมชัด Contrast >= 4.5:1 */}
