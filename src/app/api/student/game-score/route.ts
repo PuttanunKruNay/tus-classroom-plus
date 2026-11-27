@@ -15,7 +15,7 @@ export async function POST(req: Request) {
     const body = await req.json();
     const piecesPlaced = Math.max(0, Math.min(400, Math.floor(Number(body.piecesPlaced) || 0)));
     const linesCleared = Math.max(0, Math.min(250, Math.floor(Number(body.linesCleared) || 0)));
-    const maxCombo = Math.max(0, Math.min(20, Math.floor(Number(body.maxCombo) || 0)));
+    const maxCombo = Math.max(0, Math.min(25, Math.floor(Number(body.maxCombo) || 0)));
     const mode = body.mode === 'daily' ? 'daily' : 'classic';
     const dailyCompleted = Boolean(body.dailyCompleted);
 
@@ -23,15 +23,27 @@ export async function POST(req: Request) {
     if (piecesPlaced === 0 && linesCleared === 0) {
       return NextResponse.json({ ok: false, message: 'ยังไม่มีคะแนนในรอบนี้' }, { status: 400 });
     }
-    if (linesCleared > piecesPlaced * 3) {
+    if (linesCleared > piecesPlaced * 4) {
       return NextResponse.json({ ok: false, message: 'ข้อมูลเกมไม่สมเหตุสมผล กรุณาเล่นใหม่อีกครั้ง' }, { status: 400 });
     }
 
-    // คำนวณคะแนนฝั่งเซิร์ฟเวอร์: เคลียร์แถว/คอลัมน์ = 10 คะแนนต่อแนว + โบนัสวางบล็อกและคอมโบ
+    // รองรับ telemetry ละเอียดจาก Blocky Blast 8×8 (จำนวนช่องที่วาง + โบนัสล้างหลายแนว) โดยยังตรวจเพดานฝั่งเซิร์ฟเวอร์เสมอ
+    const rawCells = Number(body.cellsPlaced);
+    const cellsPlaced =
+      Number.isFinite(rawCells) && rawCells > 0
+        ? Math.max(piecesPlaced, Math.min(piecesPlaced * 9, Math.floor(rawCells)))
+        : piecesPlaced * 2;
+
+    const rawMultiBonus = Number(body.multiLineBonus);
+    const multiLineBonus =
+      Number.isFinite(rawMultiBonus) && rawMultiBonus > 0
+        ? Math.min(linesCleared * 25, Math.floor(rawMultiBonus))
+        : 0;
+
+    // คำนวณคะแนนฝั่งเซิร์ฟเวอร์: จำนวนช่องที่วาง + เคลียร์แถว/คอลัมน์ (10 คะแนน/แนว) + โบนัสหลายแนว + คอมโบ
     const lineScore = linesCleared * 10;
-    const placeBonus = piecesPlaced * 2;
     const comboBonus = maxCombo > 1 ? (maxCombo - 1) * 15 : 0;
-    const verifiedScore = lineScore + placeBonus + comboBonus;
+    const verifiedScore = cellsPlaced + lineScore + multiLineBonus + comboBonus;
 
     const student = await db.getStudentById(auth.user.id);
     if (!student) {

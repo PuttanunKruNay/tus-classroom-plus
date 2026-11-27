@@ -358,6 +358,87 @@ h1, h2, h3, h4, h5, h6, .font-heading {
   animation: scalePop 0.25s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* ---------- Blocky Blast 8x8 Arcade Animations ---------- */
+@keyframes blockPlacePop {
+  0% { transform: scale(0.8); }
+  65% { transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+
+@keyframes blockShatter {
+  0% {
+    transform: scale(1.05);
+    opacity: 1;
+    filter: brightness(1.65);
+  }
+  40% {
+    transform: scale(1.18) rotate(4deg);
+    opacity: 0.95;
+    filter: brightness(1.9);
+  }
+  100% {
+    transform: scale(0.12) rotate(16deg);
+    opacity: 0;
+    filter: brightness(2);
+  }
+}
+
+@keyframes calloutPop {
+  0% {
+    opacity: 0;
+    transform: translateY(18px) scale(0.65);
+  }
+  20% {
+    opacity: 1;
+    transform: translateY(-4px) scale(1.08);
+  }
+  35% {
+    opacity: 1;
+    transform: translateY(-8px) scale(1);
+  }
+  80% {
+    opacity: 1;
+    transform: translateY(-16px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-30px) scale(0.92);
+  }
+}
+
+@keyframes boardShake {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  20% { transform: translate3d(-3px, 2px, 0); }
+  40% { transform: translate3d(3px, -2px, 0); }
+  60% { transform: translate3d(-2px, -1px, 0); }
+  80% { transform: translate3d(2px, 1px, 0); }
+}
+
+@keyframes willClearGlow {
+  0%, 100% { filter: brightness(1.15); }
+  50% { filter: brightness(1.5); }
+}
+
+.animate-block-place {
+  animation: blockPlacePop 0.16s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-block-shatter {
+  animation: blockShatter 0.34s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.animate-callout-pop {
+  animation: calloutPop 1.15s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.animate-board-shake {
+  animation: boardShake 0.24s ease-in-out both;
+}
+
+.animate-will-clear {
+  animation: willClearGlow 0.65s ease-in-out infinite;
+}
+
 .skeleton {
   background-color: var(--bg-surface-muted);
   border-radius: 12px;
@@ -393,6 +474,11 @@ h1, h2, h3, h4, h5, h6, .font-heading {
   .emblem-breath,
   .animate-fade-up,
   .animate-scale-pop,
+  .animate-block-place,
+  .animate-block-shatter,
+  .animate-callout-pop,
+  .animate-board-shake,
+  .animate-will-clear,
   .skeleton {
     animation: none !important;
   }
