@@ -351,12 +351,12 @@ export function FloatingAiTutor({
             : `โควตาวันนี้คงเหลือ ${remaining}/${dailyLimit} ครั้ง`;
 
   return (
-    <div className="fixed bottom-[calc(4.9rem+env(safe-area-inset-bottom))] md:bottom-5 right-3 sm:right-4 z-50">
+    <div className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] md:bottom-5 right-2.5 sm:right-4 z-50">
       {open && (
         <div
           role="dialog"
           aria-label="แผงแชทฮีลใจ-บอตแสนรู้"
-          className="mb-3 w-[calc(100vw-1.5rem)] sm:w-[400px] h-[min(70dvh,540px)] tus-card overflow-hidden flex flex-col shadow-2xl border-2 border-pink-300 dark:border-pink-700 animate-scale-pop"
+          className="mb-2.5 w-[calc(100vw-1.25rem)] sm:w-[400px] h-[min(70dvh,540px)] tus-card overflow-hidden flex flex-col shadow-2xl border-2 border-pink-300 dark:border-pink-700 animate-scale-pop"
         >
           {/* Header สีชมพูสดใสน่ารัก */}
           <div className="bg-gradient-to-r from-[#ec4899] via-[#f43f8e] to-[#d81b60] text-white px-4 py-3 flex items-center justify-between gap-2">
@@ -530,19 +530,19 @@ export function FloatingAiTutor({
         </div>
       )}
 
-      {/* ปุ่มโลโก้บอตสีชมพูกลมมุมล่างขวา */}
+      {/* ปุ่มโลโก้บอตสีชมพูกลมมุมล่างขวา (กะทัดรัดบนมือถือไม่บังเกม) */}
       <button
         type="button"
         onClick={() => setOpen(v => !v)}
-        className="relative w-15 h-15 rounded-full bg-gradient-to-br from-[#ff7eb6] via-[#f43f8e] to-[#d81b60] text-white shadow-xl border-2 border-white border-b-4 border-b-[#9d174d] active:translate-y-1 transition flex items-center justify-center cursor-pointer overflow-visible"
+        className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-[#ff7eb6] via-[#f43f8e] to-[#d81b60] text-white shadow-xl border-2 border-white border-b-4 border-b-[#9d174d] active:translate-y-1 transition flex items-center justify-center cursor-pointer overflow-visible"
         aria-label={open ? 'ปิดฮีลใจ-บอตแสนรู้' : 'เปิดฮีลใจ-บอตแสนรู้'}
         title="ฮีลใจ-บอตแสนรู้"
       >
         {open ? (
-          <X className="w-7 h-7" />
+          <X className="w-6 h-6 sm:w-7 sm:h-7" />
         ) : (
           <>
-            <HealjaiPinkBotIcon className="w-10 h-10" />
+            <HealjaiPinkBotIcon className="w-8 h-8 sm:w-10 sm:h-10" />
             <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 px-1.5 py-0.5 rounded-full bg-[#ec4899] text-white text-[9px] font-heading font-bold whitespace-nowrap shadow border border-white/80">
               ฮีลใจ
             </span>

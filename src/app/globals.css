@@ -129,7 +129,12 @@ h1, h2, h3, h4, h5, h6, .font-heading {
   font-family: var(--font-prompt), "Prompt", sans-serif;
 }
 
-/* Focus Ring ชัดเจนสำหรับคีย์บอร์ด Tab */
+/* Focus Ring ชัดเจนสำหรับคีย์บอร์ด Tab + ปรับความลื่นการแตะบนมือถือ */
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
 :focus-visible {
   outline: 3px solid var(--color-primary);
   outline-offset: 2px;

@@ -45,7 +45,13 @@ import { useToast } from '@/components/ToastProvider';
 interface TechTaleCircuitLabProps {
   studentId: string;
   studentName: string;
-  onSyncSchoolXp?: (scoreEquivalent: number, label: string) => Promise<void>;
+  currentXp?: number;
+  dailyXpUsed?: number;
+  dailyXpCap?: number;
+  onSyncSchoolXp?: (
+    circuitPoints: number,
+    label: string
+  ) => Promise<{ ok?: boolean; awardedXp?: number; gameXp?: number; message?: string } | void>;
 }
 
 type HubSubView = 'missions' | 'quiz' | 'achievements';
@@ -90,6 +96,9 @@ function bezierPath(start: Point, end: Point): string {
 export function TechTaleCircuitLab({
   studentId,
   studentName,
+  currentXp = 0,
+  dailyXpUsed = 0,
+  dailyXpCap = 150,
   onSyncSchoolXp
 }: TechTaleCircuitLabProps) {
   const { showToast } = useToast();
@@ -106,10 +115,11 @@ export function TechTaleCircuitLab({
   const [dialogueIdx, setDialogueIdx] = useState(0);
   const [boardType, setBoardType] = useState<'Arduino' | 'ESP32'>('Arduino');
 
-  // Wiring Lab State
+  // Wiring Lab State (รองรับแตะเลือกได้ทั้ง 2 ทาง: พิน→ขั้ว และ ขั้ว→พิน รวมถึงลากสายบนมือถือ)
   const [connections, setConnections] = useState<Record<string, string>>({}); // terminalId -> boardPin
   const [enabledParts, setEnabledParts] = useState<string[]>([]);
   const [selectedBoardPin, setSelectedBoardPin] = useState<string | null>(null);
+  const [selectedTerminal, setSelectedTerminal] = useState<string | null>(null);
   const [draggingPin, setDraggingPin] = useState<string | null>(null);
   const [dragPos, setDragPos] = useState<Point | null>(null);
   const [hoveredTerminal, setHoveredTerminal] = useState<string | null>(null);
@@ -118,6 +128,14 @@ export function TechTaleCircuitLab({
   const [hasExploded, setHasExploded] = useState(false);
   const [wiringError, setWiringError] = useState<string | null>(null);
   const [computerMinimized, setComputerMinimized] = useState(false);
+  const [wiringXpSynced, setWiringXpSynced] = useState(false);
+
+  const dragStartRef = useRef<{
+    pin: string;
+    startX: number;
+    startY: number;
+    moved: boolean;
+  } | null>(null);
 
   // Canvas Geometry Refs for accurate SVG Bezier Wires
   const canvasRef = useRef<HTMLDivElement | null>(null);
@@ -247,6 +265,7 @@ export function TechTaleCircuitLab({
     setConnections({});
     setEnabledParts([]);
     setSelectedBoardPin(null);
+    setSelectedTerminal(null);
     setDraggingPin(null);
     setDragPos(null);
     setHoveredTerminal(null);
@@ -255,6 +274,8 @@ export function TechTaleCircuitLab({
     setHasExploded(false);
     setWiringError(null);
     setComputerMinimized(false);
+    setWiringXpSynced(false);
+    dragStartRef.current = null;
     boardPinEls.current = {};
     terminalEls.current = {};
   }
@@ -262,6 +283,9 @@ export function TechTaleCircuitLab({
   function exitMission() {
     setActiveMission(null);
     setMissionStep('intro');
+    setSelectedBoardPin(null);
+    setSelectedTerminal(null);
+    dragStartRef.current = null;
   }
 
   function connectWire(boardPin: string, terminalId: string) {
@@ -275,11 +299,12 @@ export function TechTaleCircuitLab({
       return next;
     });
     setSelectedBoardPin(null);
+    setSelectedTerminal(null);
   }
 
   function findNearestTerminal(p: Point): string | null {
     let best: string | null = null;
-    let bestDist = 44;
+    let bestDist = 68;
     for (const [tid, pos] of Object.entries(termCoords)) {
       const d = Math.hypot(pos.x - p.x, pos.y - p.y);
       if (d < bestDist) {
@@ -291,7 +316,13 @@ export function TechTaleCircuitLab({
   }
 
   function handleCanvasPointerMove(e: React.PointerEvent<HTMLDivElement>) {
-    if (!draggingPin || !canvasRef.current) return;
+    const start = dragStartRef.current;
+    if (!start || !canvasRef.current) return;
+    if (!start.moved && Math.hypot(e.clientX - start.startX, e.clientY - start.startY) > 10) {
+      start.moved = true;
+      setDraggingPin(start.pin);
+    }
+    if (!start.moved) return;
     const base = canvasRef.current.getBoundingClientRect();
     const pos = { x: e.clientX - base.left, y: e.clientY - base.top };
     setDragPos(pos);
@@ -299,10 +330,24 @@ export function TechTaleCircuitLab({
   }
 
   function handleCanvasPointerUp() {
-    if (!draggingPin) return;
-    if (hoveredTerminal) {
-      connectWire(draggingPin, hoveredTerminal);
+    const start = dragStartRef.current;
+    dragStartRef.current = null;
+
+    if (start) {
+      if (start.moved) {
+        if (hoveredTerminal) {
+          connectWire(start.pin, hoveredTerminal);
+        }
+      } else {
+        // แตะครั้งเดียวแบบไม่ลาก (Tap-to-Wire) ไม่ชนกับ onClick อีกต่อไป!
+        if (selectedTerminal) {
+          connectWire(start.pin, selectedTerminal);
+        } else {
+          setSelectedBoardPin(prev => (prev === start.pin ? null : start.pin));
+        }
+      }
     }
+
     setDraggingPin(null);
     setDragPos(null);
     setHoveredTerminal(null);
@@ -364,13 +409,20 @@ export function TechTaleCircuitLab({
       return;
     }
 
-    // Success! Move to Coding Minigame
+    // Success! Move to Coding Minigame + ซิงก์ XP ขั้นต่อสายเข้าบัญชีทันที
     setWiringError(null);
     setShowHint(false);
     setShowMentorTip(false);
     setComputerMinimized(false);
+    setSelectedBoardPin(null);
+    setSelectedTerminal(null);
     setMissionStep('coding');
     showToast('ต่อวงจรสำเร็จ! เปิดคอมพิวเตอร์ TechOS เพื่อเขียนโค้ดกันเลย', { kind: 'success' });
+
+    if (!wiringXpSynced && onSyncSchoolXp) {
+      setWiringXpSynced(true);
+      void onSyncSchoolXp(40, `ต่อวงจรสำเร็จ: ${activeMission.title}`);
+    }
   }
 
   async function handleFinishMission() {
@@ -388,9 +440,9 @@ export function TechTaleCircuitLab({
       pts
     );
 
-    // Sync real XP to TUS Classroom Plus server leaderboard!
+    // ซิงก์คะแนนต่อวงจรรวมเข้า XP หลักของโรงเรียนเพื่อแสดงในอันดับ Top 5 ทันที!
     if (onSyncSchoolXp) {
-      await onSyncSchoolXp(isReplay ? 100 : 350, activeMission.title);
+      await onSyncSchoolXp(isReplay ? 40 : 100, `ผ่านภารกิจต่อวงจร: ${activeMission.title}`);
     }
     exitMission();
   }
@@ -415,7 +467,7 @@ export function TechTaleCircuitLab({
     );
 
     if (ok && onSyncSchoolXp) {
-      await onSyncSchoolXp(150, 'TechTale Daily Quiz');
+      await onSyncSchoolXp(60, 'TechTale Daily Quiz');
     }
   }
 
@@ -639,7 +691,9 @@ export function TechTaleCircuitLab({
           onPointerMove={handleCanvasPointerMove}
           onPointerUp={handleCanvasPointerUp}
           onPointerCancel={handleCanvasPointerUp}
-          className="tus-card relative p-4 sm:p-6 overflow-hidden select-none"
+          className={`tus-card relative p-3.5 sm:p-6 overflow-hidden select-none ${
+            draggingPin ? 'touch-none' : 'touch-pan-y'
+          }`}
           style={{
             backgroundImage:
               'radial-gradient(circle at 1px 1px, rgba(184,25,79,0.12) 1px, transparent 0)',
@@ -733,70 +787,125 @@ export function TechTaleCircuitLab({
             );
           })}
 
-          {/* Board + Target Device Layout */}
-          <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-8 items-center py-2">
-            {/* LEFT: Microcontroller Board + 14 Interactive Pins */}
-            <div className="flex flex-col items-center gap-3">
-              <div className="w-full max-w-[380px] space-y-2 p-3 rounded-2xl border-2 border-neutral-900 bg-[#00748c]/95 dark:bg-neutral-800 shadow-md">
-                <div className="text-center text-xs font-heading font-bold text-white/90">
-                  แตะหรือลากจากพินบนบอร์ด {boardType === 'Arduino' ? 'Arduino UNO' : 'ESP32'}
+          {/* แถบสถานะแนะนำการแตะต่อสายบนมือถือ (เห็นชัดระหว่างพินกับอุปกรณ์) */}
+          {missionStep === 'wiring' && (
+            <div className="relative z-30 mb-3 text-center">
+              {selectedBoardPin ? (
+                <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-amber-100 dark:bg-amber-950/70 text-amber-900 dark:text-amber-200 border-2 border-amber-500 text-xs sm:text-sm font-heading font-bold shadow-sm">
+                  <span>⚡ กำลังเลือกพิน {formatBoardPinDisplay(selectedBoardPin, boardType)} — แตะขั้วอุปกรณ์ด้านล่างเพื่อต่อสาย!</span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedBoardPin(null)}
+                    className="px-2 py-0.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/35 text-xs cursor-pointer"
+                  >
+                    ยกเลิก
+                  </button>
                 </div>
-                {[row1Pins, row2Pins].map((row, rIdx) => (
-                  <div key={rIdx} className="grid grid-cols-7 gap-1.5">
-                    {row.map(pin => {
-                      const active = highlightedPins.has(pin);
-                      const picked = selectedBoardPin === pin || draggingPin === pin;
-                      return (
-                        <button
-                          key={pin}
-                          ref={el => {
-                            boardPinEls.current[pin] = el;
-                          }}
-                          type="button"
-                          disabled={missionStep !== 'wiring'}
-                          onClick={() => {
-                            if (missionStep !== 'wiring') return;
-                            setWiringError(null);
-                            setSelectedBoardPin(prev => (prev === pin ? null : pin));
-                          }}
-                          onPointerDown={e => {
-                            if (missionStep !== 'wiring') return;
+              ) : selectedTerminal ? (
+                <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-emerald-100 dark:bg-emerald-950/70 text-emerald-900 dark:text-emerald-200 border-2 border-emerald-500 text-xs sm:text-sm font-heading font-bold shadow-sm">
+                  <span>🔌 กำลังเลือกขั้ว {activeMission.terminals.find(t => t.id === selectedTerminal)?.label} — แตะพินบนบอร์ดเพื่อต่อสาย!</span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedTerminal(null)}
+                    className="px-2 py-0.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/35 text-xs cursor-pointer"
+                  >
+                    ยกเลิก
+                  </button>
+                </div>
+              ) : (
+                <div className="inline-block px-3 py-1 rounded-full bg-[var(--bg-surface-muted)] border border-[var(--border-subtle)] text-[11px] sm:text-xs font-heading font-semibold text-[var(--text-secondary)]">
+                  แตะพินบนบอร์ด แล้วแตะขั้วอุปกรณ์ (สลับลำดับได้) หรือกดค้างลากสายเชื่อมได้เลย
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Board + Target Device Layout */}
+          <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-8 items-center py-1">
+            {/* LEFT: Microcontroller Board + 14 Large Mobile-Friendly Interactive Pins */}
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-full max-w-[420px] space-y-2.5 p-3 sm:p-3.5 rounded-2xl border-2 border-neutral-900 bg-[#006980] dark:bg-neutral-800 shadow-md">
+                <div className="flex items-center justify-between text-xs font-heading font-bold text-white/95 px-1">
+                  <span>พินบอร์ด {boardType === 'Arduino' ? 'Arduino UNO' : 'ESP32'}</span>
+                  <span className="text-[11px] text-amber-200">แตะเลือกง่ายๆ</span>
+                </div>
+                {/* มือถือแสดงแถวละ 4 ปุ่มใหญ่ (54px) กดไม่พลาด • จอกว้างแสดงแถวละ 7 พินเหมือนบอร์ดจริง */}
+                <div className="grid grid-cols-4 sm:grid-cols-7 gap-2 sm:gap-1.5">
+                  {[...row1Pins, ...row2Pins].map(pin => {
+                    const active = highlightedPins.has(pin);
+                    const picked = selectedBoardPin === pin || draggingPin === pin;
+                    const readyFromTerminal = Boolean(selectedTerminal && missionStep === 'wiring');
+                    return (
+                      <button
+                        key={pin}
+                        ref={el => {
+                          boardPinEls.current[pin] = el;
+                        }}
+                        type="button"
+                        disabled={missionStep !== 'wiring'}
+                        onKeyDown={e => {
+                          if (missionStep !== 'wiring') return;
+                          if (e.key === 'Enter' || e.key === ' ') {
                             e.preventDefault();
-                            setWiringError(null);
-                            setDraggingPin(pin);
-                            setSelectedBoardPin(pin);
-                            if (canvasRef.current) {
-                              const base = canvasRef.current.getBoundingClientRect();
-                              setDragPos({ x: e.clientX - base.left, y: e.clientY - base.top });
+                            if (selectedTerminal) {
+                              connectWire(pin, selectedTerminal);
+                            } else {
+                              setSelectedBoardPin(prev => (prev === pin ? null : pin));
                             }
-                          }}
-                          className={`py-1.5 rounded-xl flex flex-col items-center justify-center gap-1 cursor-grab active:cursor-grabbing touch-none transition ${
+                          }
+                        }}
+                        onPointerDown={e => {
+                          if (missionStep !== 'wiring') return;
+                          e.preventDefault();
+                          setWiringError(null);
+                          dragStartRef.current = {
+                            pin,
+                            startX: e.clientX,
+                            startY: e.clientY,
+                            moved: false
+                          };
+                          if (canvasRef.current) {
+                            const base = canvasRef.current.getBoundingClientRect();
+                            setDragPos({ x: e.clientX - base.left, y: e.clientY - base.top });
+                          }
+                        }}
+                        className={`min-h-[54px] sm:min-h-[50px] py-2 px-1 rounded-xl flex flex-col items-center justify-center gap-1.5 cursor-pointer touch-none transition active:scale-95 ${
+                          picked
+                            ? 'bg-yellow-400/35 ring-2 ring-yellow-300 scale-105 shadow-md'
+                            : readyFromTerminal
+                              ? 'bg-emerald-400/20 ring-1 ring-emerald-300/80 hover:bg-emerald-400/30'
+                              : active
+                                ? 'bg-white/15 ring-1 ring-yellow-300/70'
+                                : 'bg-black/20 hover:bg-white/15'
+                        }`}
+                      >
+                        <span className={`text-xs sm:text-[11px] font-mono font-black leading-none ${active ? 'text-yellow-300' : 'text-white'}`}>
+                          {formatBoardPinLabel(pin, boardType)}
+                        </span>
+                        <span
+                          className={`w-5 h-5 sm:w-4 sm:h-4 rounded-full border-2 border-white flex items-center justify-center ${
                             picked
-                              ? 'bg-yellow-400/30 ring-2 ring-yellow-300 scale-105'
-                              : 'hover:bg-white/15'
+                              ? 'bg-yellow-300 shadow-[0_0_10px_#fde047]'
+                              : active
+                                ? 'bg-yellow-400 shadow-[0_0_8px_#facc15]'
+                                : 'bg-neutral-900'
                           }`}
                         >
-                          <span className={`text-[10px] font-mono font-black ${active ? 'text-yellow-300' : 'text-white'}`}>
-                            {formatBoardPinLabel(pin, boardType)}
-                          </span>
-                          <span
-                            className={`w-4 h-4 rounded-full border-2 border-white flex items-center justify-center ${
-                              active ? 'bg-yellow-400 shadow-[0_0_8px_#facc15]' : 'bg-neutral-800'
-                            }`}
-                          >
-                            <span className="w-1.5 h-1.5 rounded-full bg-black" />
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                ))}
+                          <span className="w-1.5 h-1.5 rounded-full bg-black" />
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-              <VectorBoardArt boardType={boardType} />
+              {/* ซ่อนภาพบอร์ดขนาดใหญ่เฉพาะตอนต่อสายบนมือถือ เพื่อให้พินกับขั้วอุปกรณ์อยู่ใกล้กันในจอเดียว */}
+              <div className="hidden lg:flex justify-center">
+                <VectorBoardArt boardType={boardType} />
+              </div>
             </div>
 
-            {/* RIGHT: Target Device + Terminals */}
-            <div className="flex flex-col items-center gap-5">
+            {/* RIGHT: Target Device + Big Touch-Friendly Terminals */}
+            <div className="flex flex-col items-center gap-4">
               {/* Floating non-inline enabled parts */}
               {enabledParts.length > 0 && (
                 <div className="flex flex-wrap justify-center gap-1.5">
@@ -813,9 +922,87 @@ export function TechTaleCircuitLab({
                 </div>
               )}
 
+              {/* Device Terminals (วางไว้ด้านบนของตัวอุปกรณ์บนมือถือ เพื่อให้เห็นและแตะได้ง่ายทันทีใกล้พินบอร์ด) */}
+              <div className="w-full max-w-[420px] flex flex-wrap justify-center gap-3 px-3.5 py-3.5 rounded-2xl bg-white dark:bg-neutral-900 border-[3px] border-neutral-900 shadow-md">
+                {activeMission.terminals.map(t => {
+                  const connectedPin = connections[t.id];
+                  const isConnected = Boolean(connectedPin);
+                  const isHovered = hoveredTerminal === t.id;
+                  const isPickedTerm = selectedTerminal === t.id;
+                  const readyToTap = Boolean(selectedBoardPin && missionStep === 'wiring');
+
+                  return (
+                    <div key={t.id} className="relative">
+                      <button
+                        ref={el => {
+                          terminalEls.current[t.id] = el;
+                        }}
+                        type="button"
+                        disabled={missionStep !== 'wiring'}
+                        onClick={() => {
+                          if (missionStep !== 'wiring') return;
+                          setWiringError(null);
+                          if (selectedBoardPin) {
+                            connectWire(selectedBoardPin, t.id);
+                          } else {
+                            setSelectedTerminal(prev => (prev === t.id ? null : t.id));
+                          }
+                        }}
+                        className={`min-h-[68px] min-w-[92px] flex flex-col items-center justify-center gap-1 px-3.5 py-2 rounded-2xl border-2 cursor-pointer transition active:scale-95 ${
+                          isPickedTerm
+                            ? 'border-emerald-600 bg-emerald-100 dark:bg-emerald-950/70 ring-2 ring-emerald-400 scale-105'
+                            : isHovered || readyToTap
+                              ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 ring-2 ring-emerald-400 scale-[1.03]'
+                              : isConnected
+                                ? 'border-amber-500 bg-amber-50/70 dark:bg-amber-950/30'
+                                : 'border-[var(--border-strong)] bg-[var(--bg-surface-muted)] hover:border-[var(--color-primary)]'
+                        }`}
+                      >
+                        <span
+                          className="w-8 h-8 rounded-full border-[2.5px] border-black flex items-center justify-center shadow-sm"
+                          style={{ backgroundColor: t.color }}
+                        >
+                          <span className={`w-3 h-3 rounded-full ${isConnected ? 'bg-yellow-300' : 'bg-white'}`} />
+                        </span>
+                        <span className="text-xs sm:text-sm font-mono font-black text-[var(--text-primary)] leading-tight">
+                          {t.label}
+                        </span>
+                        <span
+                          className={`text-[10px] font-heading font-bold leading-none ${
+                            isConnected ? 'text-emerald-700 dark:text-emerald-300' : 'text-[var(--text-muted)]'
+                          }`}
+                        >
+                          {isConnected ? `→ ${formatBoardPinLabel(connectedPin, boardType)}` : 'แตะต่อสาย'}
+                        </span>
+                      </button>
+
+                      {/* ปุ่มกากบาทเล็กๆ สำหรับถอดสายเฉพาะเส้นนี้ได้ใน 1 แตะ */}
+                      {isConnected && missionStep === 'wiring' && (
+                        <button
+                          type="button"
+                          onClick={e => {
+                            e.stopPropagation();
+                            setConnections(prev => {
+                              const next = { ...prev };
+                              delete next[t.id];
+                              return next;
+                            });
+                          }}
+                          aria-label={`ถอดสายขั้ว ${t.label}`}
+                          title="ถอดสายเส้นนี้"
+                          className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-600 text-white flex items-center justify-center shadow border-2 border-white cursor-pointer hover:bg-red-700"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
               {/* Device Display Enclosure */}
               <div
-                className={`min-w-[176px] min-h-[150px] px-6 py-5 rounded-3xl border-[4px] flex flex-col items-center justify-center shadow-lg transition-all ${
+                className={`min-w-[164px] min-h-[126px] sm:min-h-[150px] px-5 py-4 sm:py-5 rounded-3xl border-[4px] flex flex-col items-center justify-center shadow-lg transition-all ${
                   hasExploded
                     ? 'bg-neutral-800 border-red-600'
                     : isRunning
@@ -829,60 +1016,10 @@ export function TechTaleCircuitLab({
                   isRunning={isRunning}
                   hasExploded={hasExploded}
                 />
-                <div className="mt-3 text-xs font-mono font-extrabold text-[var(--text-secondary)]">
+                <div className="mt-2.5 text-xs font-mono font-extrabold text-[var(--text-secondary)]">
                   {activeMission.targetComponentTitle}
                 </div>
               </div>
-
-              {/* Device Terminals */}
-              <div className="flex flex-wrap justify-center gap-4 px-5 py-3.5 rounded-2xl bg-white dark:bg-neutral-900 border-[3px] border-neutral-900 shadow-md">
-                {activeMission.terminals.map(t => {
-                  const isConnected = Boolean(connections[t.id]);
-                  const isHovered = hoveredTerminal === t.id;
-                  const readyToTap = Boolean(selectedBoardPin && missionStep === 'wiring');
-
-                  return (
-                    <button
-                      key={t.id}
-                      ref={el => {
-                        terminalEls.current[t.id] = el;
-                      }}
-                      type="button"
-                      disabled={missionStep !== 'wiring'}
-                      onClick={() => {
-                        if (missionStep !== 'wiring') return;
-                        if (selectedBoardPin) {
-                          connectWire(selectedBoardPin, t.id);
-                        } else if (connections[t.id]) {
-                          // Tap an already-wired terminal with no pin selected to disconnect it
-                          setConnections(prev => {
-                            const next = { ...prev };
-                            delete next[t.id];
-                            return next;
-                          });
-                        }
-                      }}
-                      className={`flex flex-col items-center gap-1.5 p-1.5 rounded-xl cursor-pointer transition ${
-                        isHovered || readyToTap ? 'ring-2 ring-emerald-500 scale-105 bg-emerald-50/60 dark:bg-emerald-950/40' : ''
-                      }`}
-                    >
-                      <span
-                        className="w-7 h-7 rounded-full border-[2.5px] border-black flex items-center justify-center shadow-sm"
-                        style={{ backgroundColor: t.color }}
-                      >
-                        <span className={`w-2.5 h-2.5 rounded-full ${isConnected ? 'bg-yellow-300' : 'bg-white'}`} />
-                      </span>
-                      <span className="text-xs font-mono font-black text-[var(--text-primary)]">{t.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {selectedBoardPin && missionStep === 'wiring' && (
-                <div className="text-xs font-heading font-bold px-3 py-1.5 rounded-full bg-yellow-100 text-yellow-900 border border-yellow-500">
-                  เลือกพิน {formatBoardPinDisplay(selectedBoardPin, boardType)} อยู่ — แตะขั้วอุปกรณ์ด้านบนเพื่อต่อสาย!
-                </div>
-              )}
             </div>
           </div>
 
@@ -1093,7 +1230,11 @@ export function TechTaleCircuitLab({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <div className="px-4 py-2 rounded-2xl bg-[var(--color-gold-bg)] border border-[var(--color-gold-border)] text-center">
+            <div className="px-3.5 py-2 rounded-2xl bg-[var(--color-primary-soft)] border border-[var(--color-primary-border)] text-center">
+              <div className="text-[11px] font-heading font-bold text-[var(--color-primary)]">XP รวม (Top 5)</div>
+              <div className="font-mono font-extrabold text-lg text-[var(--color-primary)]">🏆 {currentXp} XP</div>
+            </div>
+            <div className="px-3.5 py-2 rounded-2xl bg-[var(--color-gold-bg)] border border-[var(--color-gold-border)] text-center">
               <div className="text-[11px] font-heading font-bold text-[var(--color-gold)]">แต้ม TechTale</div>
               <div className="font-mono font-extrabold text-lg text-[var(--color-gold)]">⭐ {progress.points}</div>
             </div>
@@ -1101,6 +1242,15 @@ export function TechTaleCircuitLab({
               <HelpCircle className="w-4 h-4" /> วิธีเล่น
             </button>
           </div>
+        </div>
+
+        <div className="text-xs text-[var(--text-secondary)] bg-[var(--bg-surface-muted)] px-3.5 py-2 rounded-xl border border-[var(--border-subtle)] flex flex-wrap items-center justify-between gap-2">
+          <span>
+            ต่อวงจรสำเร็จรับ <strong>+10 XP</strong> • ผ่านด่านรับเพิ่ม <strong>+25 XP</strong> • Daily Quiz รับ <strong>+15 XP</strong> (รวมเข้าคะแนน XP ของโรงเรียนทันที!)
+          </span>
+          <span className="font-heading font-bold text-[var(--color-primary)]">
+            โควตา XP วันนี้ {dailyXpUsed}/{dailyXpCap}
+          </span>
         </div>
 
         {/* Progress to Next Level */}

@@ -13,6 +13,60 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
+    const source = body.source === 'circuit' ? 'circuit' : 'block';
+
+    const student = await db.getStudentById(auth.user.id);
+    if (!student) {
+      return NextResponse.json({ ok: false, message: 'ไม่พบข้อมูลนักเรียน' }, { status: 404 });
+    }
+
+    const today = todayBangkokDate();
+    const alreadyEarnedToday = student.dailyXpDate === today ? student.dailyXpEarned || 0 : 0;
+    const remainingDailyCap = Math.max(0, DAILY_XP_CAP - alreadyEarnedToday);
+
+    // เส้นทางที่ 1: คะแนนจากเกมต่อวงจร TechTale Circuit Lab -> รวมเข้า XP หลักของนักเรียนและโชว์ใน Top 5 ทันที
+    if (source === 'circuit') {
+      const circuitPoints = Math.max(0, Math.min(150, Math.floor(Number(body.circuitPoints) || 0)));
+      if (circuitPoints <= 0) {
+        return NextResponse.json({ ok: false, message: 'ยังไม่มีคะแนนต่อวงจรในรอบนี้' }, { status: 400 });
+      }
+
+      // สูตรแปลงแต้มต่อวงจรเป็น XP (เช่น ผ่านด่าน 100 แต้ม = 25 XP, ต่อสายสำเร็จ 40 แต้ม = 10 XP, Daily Quiz 60 แต้ม = 15 XP)
+      const rawXp = Math.max(5, Math.round(circuitPoints / 4));
+      const awardedXp = Math.min(remainingDailyCap, rawXp);
+      const nextTotalXp = (student.gameXp || 0) + awardedXp;
+
+      const badgeSet = new Set<string>(student.badges || []);
+      badgeSet.add('first_game');
+      if (nextTotalXp >= 500) badgeSet.add('xp_500');
+
+      const updated = {
+        ...student,
+        gameXp: nextTotalXp,
+        gameBestScore: Math.max(student.gameBestScore || 0, circuitPoints),
+        gamePlays: (student.gamePlays || 0) + 1,
+        dailyXpDate: today,
+        dailyXpEarned: alreadyEarnedToday + awardedXp,
+        badges: Array.from(badgeSet)
+      };
+
+      await db.upsertStudent(updated);
+
+      return NextResponse.json({
+        ok: true,
+        source: 'circuit',
+        verifiedScore: circuitPoints,
+        awardedXp,
+        gameXp: updated.gameXp,
+        gameBestScore: updated.gameBestScore,
+        gamePlays: updated.gamePlays,
+        dailyXpUsed: updated.dailyXpEarned,
+        dailyXpCap: DAILY_XP_CAP,
+        badges: updated.badges
+      });
+    }
+
+    // เส้นทางที่ 2: คะแนนจากเกม Blocky Blast 8×8
     const piecesPlaced = Math.max(0, Math.min(400, Math.floor(Number(body.piecesPlaced) || 0)));
     const linesCleared = Math.max(0, Math.min(250, Math.floor(Number(body.linesCleared) || 0)));
     const maxCombo = Math.max(0, Math.min(25, Math.floor(Number(body.maxCombo) || 0)));
@@ -44,15 +98,6 @@ export async function POST(req: Request) {
     const lineScore = linesCleared * 10;
     const comboBonus = maxCombo > 1 ? (maxCombo - 1) * 15 : 0;
     const verifiedScore = cellsPlaced + lineScore + multiLineBonus + comboBonus;
-
-    const student = await db.getStudentById(auth.user.id);
-    if (!student) {
-      return NextResponse.json({ ok: false, message: 'ไม่พบข้อมูลนักเรียน' }, { status: 404 });
-    }
-
-    const today = todayBangkokDate();
-    const alreadyEarnedToday = student.dailyXpDate === today ? student.dailyXpEarned || 0 : 0;
-    const remainingDailyCap = Math.max(0, DAILY_XP_CAP - alreadyEarnedToday);
 
     // สูตรแปลงคะแนนเป็น XP: 1 XP ต่อทุก 10 คะแนน (+20 XP โบนัสถ้าผ่าน Daily Challenge วันนี้ครั้งแรก)
     const rawXp = Math.floor(verifiedScore / POINTS_PER_XP);

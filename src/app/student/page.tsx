@@ -386,6 +386,35 @@ export default function StudentPortalPage() {
     return json;
   }
 
+  async function handleSyncCircuitXp(circuitPoints: number, label: string) {
+    try {
+      const res = await fetch('/api/student/game-score', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          source: 'circuit',
+          circuitPoints,
+          label
+        })
+      });
+      const json = await res.json();
+      if (json.ok) {
+        if ((json.awardedXp || 0) > 0) {
+          showToast(
+            `รวมคะแนนต่อวงจรเข้า XP แล้ว! รับ +${json.awardedXp} XP (XP รวม ${json.gameXp} XP)`,
+            { kind: 'success' }
+          );
+        } else {
+          showToast('บันทึกคะแนนต่อวงจรแล้ว (วันนี้ครบโควตา XP รายวันแล้ว)', { kind: 'info' });
+        }
+        await loadDashboard();
+      }
+      return json;
+    } catch {
+      return { ok: false };
+    }
+  }
+
   // Loading Skeleton State
   if (loading) {
     return (
@@ -446,7 +475,7 @@ export default function StudentPortalPage() {
   ];
 
   return (
-    <div className="min-h-screen flex flex-col pb-24 md:pb-14">
+    <div className="min-h-screen flex flex-col pb-28 md:pb-14">
       <PortalHeader
         subtitle={`${data.courseOverview.courseCode} ${data.courseOverview.courseNameTh}`}
         userName={fullName}
@@ -567,20 +596,23 @@ export default function StudentPortalPage() {
                   const Icon = tab.icon;
                   const active = activeTab === tab.id;
                   return (
-                    <button
-                      key={tab.id}
-                      type="button"
-                      onClick={() => {
-                        setActiveTab(tab.id);
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
-                      }}
-                      className={`min-h-[48px] px-0.5 py-1.5 rounded-xl flex flex-col items-center justify-center gap-0.5 cursor-pointer transition ${
-                        active ? 'text-[var(--color-primary)] bg-[var(--color-primary-soft)] font-bold' : 'text-[var(--text-muted)]'
-                      }`}
-                    >
-                      <Icon className="w-5 h-5 shrink-0" />
-                      <span className="text-[10px] sm:text-[11px] font-heading leading-tight">{tab.short}</span>
-                    </button>
+                      <button
+                        key={tab.id}
+                        type="button"
+                        onClick={() => {
+                          setActiveTab(tab.id);
+                          window.scrollTo({ top: 0, behavior: 'smooth' });
+                        }}
+                        className={`relative min-h-[54px] px-0.5 py-1.5 rounded-xl flex flex-col items-center justify-center gap-0.5 cursor-pointer transition active:scale-95 ${
+                          active ? 'text-[var(--color-primary)] bg-[var(--color-primary-soft)] font-bold' : 'text-[var(--text-muted)]'
+                        }`}
+                      >
+                        {active && (
+                          <span className="absolute top-0.5 w-6 h-1 rounded-full bg-[var(--color-primary)]" />
+                        )}
+                        <Icon className="w-5 h-5 shrink-0" />
+                        <span className="text-[10px] sm:text-[11px] font-heading leading-tight">{tab.short}</span>
+                      </button>
                   );
                 })}
               </div>
@@ -640,14 +672,47 @@ export default function StudentPortalPage() {
                             {data.gradeSummary.grade}
                           </div>
                         </div>
-                        <div className="px-4 py-3 rounded-2xl bg-[var(--color-gold-bg)] border border-[var(--color-gold-border)] text-center">
-                          <div className="text-xs text-[var(--color-gold)] font-semibold">XP เกม</div>
+                        <div className="px-3 sm:px-4 py-3 rounded-2xl bg-[var(--color-gold-bg)] border border-[var(--color-gold-border)] text-center">
+                          <div className="text-[11px] sm:text-xs text-[var(--color-gold)] font-semibold">XP รวม</div>
                           <div className="font-heading font-extrabold text-lg text-[var(--color-gold)]">
                             {data.student.gameXp}
                           </div>
                         </div>
                       </div>
                     </div>
+                  </section>
+
+                  {/* ทางลัดปุ่มใหญ่สำหรับมือถือ (กดง่ายด้วยนิ้วโป้ง เข้าถึงทุกเมนูหลักใน 1 แตะ) */}
+                  <section className="md:hidden grid grid-cols-2 gap-2.5">
+                    {[
+                      { id: 'lessons' as const, title: 'บทเรียน & 3D', desc: 'สไลด์และสื่อโต้ตอบ', icon: BookOpen },
+                      { id: 'circuit' as const, title: 'ต่อวงจร TechTale', desc: 'ต่อสาย + รับ XP รวม', icon: Cpu },
+                      { id: 'game' as const, title: 'Blocky Blast 8×8', desc: 'เล่นเกมเก็บ XP', icon: Gamepad2 },
+                      { id: 'line' as const, title: 'ส่งงาน LINE', desc: 'แนบภาพส่งครู', icon: Send }
+                    ].map(item => {
+                      const Icon = item.icon;
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => {
+                            setActiveTab(item.id);
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                          }}
+                          className="tus-card p-3.5 text-left flex items-center gap-3 active:scale-[0.98] transition cursor-pointer border-2 border-[var(--border-subtle)] hover:border-[var(--color-primary)]"
+                        >
+                          <div className="w-10 h-10 rounded-xl bg-[var(--color-primary-soft)] text-[var(--color-primary)] flex items-center justify-center shrink-0">
+                            <Icon className="w-5 h-5" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="font-heading font-bold text-sm text-[var(--text-primary)] leading-tight truncate">
+                              {item.title}
+                            </div>
+                            <div className="text-[11px] text-[var(--text-secondary)] truncate">{item.desc}</div>
+                          </div>
+                        </button>
+                      );
+                    })}
                   </section>
 
                   {/* (3) ประกาศล่าสุดจากครูผู้สอน (Classroom Stream) */}
@@ -1561,17 +1626,10 @@ export default function StudentPortalPage() {
                   <TechTaleCircuitLab
                     studentId={data.student.studentId}
                     studentName={fullName}
-                    onSyncSchoolXp={async scoreEq => {
-                      const piecesPlaced = Math.max(10, Math.round(scoreEq / 15));
-                      const linesCleared = Math.max(2, Math.round(scoreEq / 20));
-                      await handleSaveGame({
-                        piecesPlaced,
-                        linesCleared,
-                        maxCombo: scoreEq >= 200 ? 3 : 2,
-                        mode: 'classic',
-                        dailyCompleted: false
-                      });
-                    }}
+                    currentXp={data.student.gameXp}
+                    dailyXpUsed={data.quotas.dailyXpUsed}
+                    dailyXpCap={data.quotas.dailyXpCap}
+                    onSyncSchoolXp={handleSyncCircuitXp}
                   />
                   <Top5Leaderboard items={data.leaderboard} />
                 </div>

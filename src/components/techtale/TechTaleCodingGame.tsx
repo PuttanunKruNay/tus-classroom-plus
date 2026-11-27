@@ -241,11 +241,11 @@ export function TechTaleCodingGame({
                             type="button"
                             disabled={execState !== 'idle'}
                             onClick={() => setSelectedBlank(tok.id)}
-                            className={`mx-1 px-2.5 py-0.5 rounded-md font-mono font-bold text-sm border-2 cursor-pointer transition ${
+                            className={`mx-1 my-0.5 min-h-[38px] min-w-[54px] px-3 py-1 rounded-lg font-mono font-bold text-sm sm:text-base border-2 cursor-pointer transition ${
                               wrongBlanks.has(tok.id)
                                 ? 'bg-red-500/25 border-red-500 text-red-300'
                                 : selectedBlank === tok.id
-                                  ? 'bg-pink-500/35 border-pink-400 text-white scale-105'
+                                  ? 'bg-pink-500/35 border-pink-400 text-white scale-105 ring-2 ring-pink-300/60'
                                   : userAnswers[tok.id]
                                     ? 'bg-cyan-500/15 border-cyan-400/60 text-cyan-300'
                                     : 'bg-white/10 border-dashed border-pink-300/70 text-pink-300'
@@ -313,7 +313,7 @@ export function TechTaleCodingGame({
                         type="button"
                         disabled={execState !== 'idle'}
                         onClick={() => handleChooseOption(opt)}
-                        className={`min-h-[42px] px-3.5 py-1.5 rounded-xl font-mono font-black text-sm sm:text-base border-2 border-black cursor-pointer transition inline-flex items-center gap-2 ${
+                        className={`min-h-[48px] px-4 py-2.5 rounded-xl font-mono font-black text-sm sm:text-base border-2 border-black cursor-pointer transition inline-flex items-center gap-2 ${
                           isCurrent
                             ? 'bg-yellow-300 text-neutral-950 scale-105 shadow-md'
                             : 'bg-white text-neutral-950 hover:bg-pink-100'

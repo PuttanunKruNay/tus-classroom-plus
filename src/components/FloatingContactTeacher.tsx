@@ -110,12 +110,12 @@ export function FloatingContactTeacher({
   )}`;
 
   return (
-    <div className="fixed bottom-[calc(9.3rem+env(safe-area-inset-bottom))] md:bottom-24 right-3 sm:right-4 z-50">
+    <div className="fixed bottom-[calc(8.5rem+env(safe-area-inset-bottom))] md:bottom-24 right-2.5 sm:right-4 z-50">
       {open && (
         <div
           role="dialog"
           aria-label="ติดต่อคุณครูผู้สอน"
-          className="mb-3 w-[calc(100vw-1.5rem)] sm:w-[400px] h-[min(74dvh,560px)] tus-card overflow-hidden flex flex-col shadow-2xl border-2 border-[var(--color-primary-border)] animate-scale-pop"
+          className="mb-2.5 w-[calc(100vw-1.25rem)] sm:w-[400px] h-[min(72dvh,540px)] tus-card overflow-hidden flex flex-col shadow-2xl border-2 border-[var(--color-primary-border)] animate-scale-pop"
         >
           {/* Header */}
           <div className="bg-[var(--color-primary)] text-white px-4 py-3 flex items-center justify-between gap-2">
@@ -340,17 +340,17 @@ export function FloatingContactTeacher({
         </div>
       )}
 
-      {/* ปุ่มรูปลอยติดต่อครู (เหมือนปุ่มแชทบอต มีรูปครูและป้ายแจ้งเตือนคำตอบ) */}
+      {/* ปุ่มรูปลอยติดต่อครู (กะทัดรัดบนมือถือไม่บังเกม) */}
       <button
         type="button"
         onClick={() => setOpen(v => !v)}
-        className="relative w-15 h-15 rounded-full bg-white shadow-xl border-2 border-[var(--color-primary)] border-b-4 border-b-[var(--color-primary-shadow)] active:translate-y-1 transition flex items-center justify-center cursor-pointer overflow-visible group"
+        className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-white shadow-xl border-2 border-[var(--color-primary)] border-b-4 border-b-[var(--color-primary-shadow)] active:translate-y-1 transition flex items-center justify-center cursor-pointer overflow-visible group"
         aria-label={open ? 'ปิดหน้าต่างติดต่อครู' : 'ติดต่อคุณครูผู้สอน'}
         title="ติดต่อครูเนย์ / ครูขวัญ"
       >
         {open ? (
           <div className="w-full h-full rounded-full bg-[var(--color-primary)] text-white flex items-center justify-center">
-            <X className="w-7 h-7" />
+            <X className="w-6 h-6 sm:w-7 sm:h-7" />
           </div>
         ) : (
           <>

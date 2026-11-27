@@ -42,7 +42,7 @@ export function Top5Leaderboard({
               อันดับ XP สูงสุด Top 5 (รวมทุกห้อง)
             </h2>
             <p className="text-xs sm:text-sm text-[var(--text-secondary)]">
-              สะสมคะแนนจากเกม BLOCK MASTER PUZZLE และต่อวงจร TechTale
+              สะสมคะแนนรวมจากเกม Blocky Blast 8×8 และเกมต่อวงจร TechTale
             </p>
           </div>
         </div>
@@ -75,7 +75,7 @@ export function Top5Leaderboard({
             ยังไม่มีผู้สะสม XP — มาเป็นคนแรกกันเลย!
           </p>
           <p className="text-sm text-[var(--text-secondary)]">
-            เข้าเล่นเกม BLOCK MASTER PUZZLE เพื่อขึ้นแท่นอันดับ 1 ของโรงเรียน
+            เข้าเล่นเกม Blocky Blast 8×8 หรือเกมต่อวงจร TechTale เพื่อขึ้นแท่นอันดับ 1 ของโรงเรียน
           </p>
           {onPlayClick && (
             <button type="button" onClick={onPlayClick} className="btn-primary-3d">

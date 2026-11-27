@@ -305,11 +305,11 @@ export default function HomePage() {
                   <p className="text-sm text-[var(--text-secondary)]">เลือกบทบาทเพื่อเริ่มใช้งาน</p>
                 </div>
 
-                <div className="flex bg-[var(--bg-surface-muted)] p-1 rounded-xl border border-[var(--border-subtle)]">
+                <div className="w-full sm:w-auto grid grid-cols-2 bg-[var(--bg-surface-muted)] p-1 rounded-xl border border-[var(--border-subtle)]">
                   <button
                     type="button"
                     onClick={() => setAuthTab('login')}
-                    className={`px-3.5 py-1.5 rounded-lg text-sm font-heading font-bold transition cursor-pointer ${
+                    className={`min-h-[42px] px-3.5 py-1.5 rounded-lg text-sm font-heading font-bold transition cursor-pointer ${
                       authTab === 'login'
                         ? 'bg-[var(--bg-surface)] text-[var(--color-primary)] shadow-xs'
                         : 'text-[var(--text-secondary)]'
@@ -320,7 +320,7 @@ export default function HomePage() {
                   <button
                     type="button"
                     onClick={() => setAuthTab('register')}
-                    className={`px-3.5 py-1.5 rounded-lg text-sm font-heading font-bold transition cursor-pointer ${
+                    className={`min-h-[42px] px-3.5 py-1.5 rounded-lg text-sm font-heading font-bold transition cursor-pointer ${
                       authTab === 'register'
                         ? 'bg-[var(--bg-surface)] text-[var(--color-primary)] shadow-xs'
                         : 'text-[var(--text-secondary)]'
@@ -370,6 +370,8 @@ export default function HomePage() {
                       <input
                         id="login-id"
                         type="text"
+                        inputMode={loginRole === 'student' ? 'numeric' : 'text'}
+                        autoComplete="username"
                         required
                         value={identifier}
                         onChange={e => setIdentifier(e.target.value)}
@@ -413,7 +415,7 @@ export default function HomePage() {
                 </form>
               ) : (
                 <form onSubmit={handleRegister} className="space-y-3.5">
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label htmlFor="reg-id" className="block text-sm font-heading font-semibold mb-1">
                         รหัสนักเรียน *
@@ -421,6 +423,7 @@ export default function HomePage() {
                       <input
                         id="reg-id"
                         type="text"
+                        inputMode="numeric"
                         required
                         value={regId}
                         onChange={e => setRegId(e.target.value)}
@@ -435,6 +438,7 @@ export default function HomePage() {
                       <input
                         id="reg-num"
                         type="number"
+                        inputMode="numeric"
                         min={1}
                         value={regNumber}
                         onChange={e => setRegNumber(e.target.value)}
@@ -443,7 +447,7 @@ export default function HomePage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-2.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                     <div>
                       <label htmlFor="reg-prefix" className="block text-sm font-heading font-semibold mb-1">
                         คำนำหน้า
@@ -488,7 +492,7 @@ export default function HomePage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label htmlFor="reg-pass" className="block text-sm font-heading font-semibold mb-1">
                         ตั้งรหัสผ่าน *

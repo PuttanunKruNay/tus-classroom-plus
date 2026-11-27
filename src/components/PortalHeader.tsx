@@ -81,16 +81,16 @@ export function PortalHeader({
   return (
     <>
       <header className="sticky top-0 z-40 tus-header">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-3">
-          <Link href="/" className="flex items-center gap-3 min-w-0 group">
-            <div className="w-11 h-11 rounded-2xl bg-[var(--color-primary-soft)] border border-[var(--color-primary-border)] p-1.5 flex items-center justify-center shrink-0 emblem-breath">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2.5 sm:py-3 flex items-center justify-between gap-2 sm:gap-3">
+          <Link href="/" className="flex items-center gap-2 sm:gap-3 min-w-0 group">
+            <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-[var(--color-primary-soft)] border border-[var(--color-primary-border)] p-1 sm:p-1.5 flex items-center justify-center shrink-0 emblem-breath">
               <img src="/assets/logo_phrakiao.png?v=3" alt="ตราโรงเรียนเตรียมอุดมศึกษาภาคใต้" className="w-full h-full object-contain" />
             </div>
             <div className="min-w-0">
-              <div className="font-heading font-bold text-lg sm:text-xl text-[var(--color-primary)] leading-tight truncate">
+              <div className="font-heading font-bold text-base sm:text-xl text-[var(--color-primary)] leading-tight truncate">
                 TUS Classroom Plus
               </div>
-              <p className="text-xs sm:text-sm text-[var(--text-secondary)] truncate">{subtitle}</p>
+              <p className="hidden sm:block text-xs sm:text-sm text-[var(--text-secondary)] truncate">{subtitle}</p>
             </div>
           </Link>
 
