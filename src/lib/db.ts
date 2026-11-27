@@ -488,6 +488,118 @@ export const db = {
   },
   getStudentById: (studentId: string) => getDocById<StudentRecord>('students', studentId.trim()),
   upsertStudent: (student: StudentRecord) => setDocById('students', student.studentId, student),
+  updateStudentProfile: async (
+    oldStudentId: string,
+    patch: {
+      newStudentId?: string;
+      prefix?: string;
+      firstName?: string;
+      lastName?: string;
+      number?: number;
+      classId?: string;
+    }
+  ): Promise<
+    | { ok: true; student: StudentRecord; idChanged: boolean; oldStudentId: string }
+    | { ok: false; status: number; message: string }
+  > => {
+    const cleanOldId = oldStudentId.trim();
+    const existing = await getDocById<StudentRecord>('students', cleanOldId);
+    if (!existing) {
+      return { ok: false, status: 404, message: 'ไม่พบข้อมูลนักเรียนในระบบ' };
+    }
+
+    const targetId = (patch.newStudentId !== undefined ? patch.newStudentId : cleanOldId).trim();
+    if (!targetId || targetId.length < 2 || targetId.length > 30 || /[\s/]/.test(targetId)) {
+      return {
+        ok: false,
+        status: 400,
+        message: 'รหัสนักเรียนไม่ถูกต้อง (ต้องยาว 2–30 ตัวอักษร และห้ามมีช่องว่างหรือเครื่องหมาย /)'
+      };
+    }
+
+    const firstName = (patch.firstName !== undefined ? patch.firstName : existing.firstName).trim();
+    const lastName = (patch.lastName !== undefined ? patch.lastName : existing.lastName).trim();
+    if (!firstName || !lastName) {
+      return { ok: false, status: 400, message: 'กรุณากรอกชื่อจริงและนามสกุลให้ครบถ้วน' };
+    }
+
+    const prefix = (patch.prefix !== undefined ? patch.prefix : existing.prefix).trim() || 'นาย';
+    const rawNum = patch.number !== undefined ? Number(patch.number) : existing.number;
+    const number = Math.max(1, Math.min(99, Math.floor(Number.isFinite(rawNum) ? rawNum : existing.number || 1)));
+    const nextClassId = patch.classId !== undefined ? patch.classId.trim() : existing.classId;
+
+    const idChanged = targetId !== cleanOldId;
+    if (idChanged) {
+      const conflict = await getDocById<StudentRecord>('students', targetId);
+      if (conflict) {
+        return {
+          ok: false,
+          status: 409,
+          message: `รหัสนักเรียน "${targetId}" มีอยู่ในระบบแล้ว กรุณาตรวจสอบอีกครั้ง`
+        };
+      }
+    }
+
+    let nextClassCodes = existing.classCodes || [];
+    if (nextClassId && nextClassId !== existing.classId) {
+      const targetCls = await getDocById<ClassRoom>('classes', nextClassId);
+      if (targetCls?.classCode) {
+        nextClassCodes = Array.from(new Set([...nextClassCodes, targetCls.classCode]));
+      }
+    }
+
+    const updated: StudentRecord = {
+      ...existing,
+      studentId: targetId,
+      prefix,
+      firstName,
+      lastName,
+      number,
+      classId: nextClassId,
+      classCodes: nextClassCodes
+    };
+
+    await setDocById('students', targetId, updated);
+    collectionCache.delete('__top5_students__');
+
+    const newFullName = `${updated.prefix}${updated.firstName} ${updated.lastName}`;
+    if (idChanged) {
+      // ย้ายประวัติส่งงานและคะแนนทั้งหมดไปยังรหัสนักเรียนใหม่
+      const allSubs = await getAllDocs<SubmissionRecord>('submissions');
+      for (const sub of allSubs) {
+        if (sub.studentId === cleanOldId) {
+          const newSubId = sub.id.startsWith(`${cleanOldId}__`)
+            ? `${targetId}__${sub.assignmentId}`
+            : sub.id;
+          await setDocById('submissions', newSubId, {
+            ...sub,
+            id: newSubId,
+            studentId: targetId
+          });
+          if (newSubId !== sub.id) {
+            await deleteDocById('submissions', sub.id);
+          }
+        }
+      }
+
+      // ย้ายข้อความติดต่อครูไปยังรหัสนักเรียนใหม่และชื่อใหม่
+      const allMsgs = await getAllDocs<TeacherMessage>('teacher_messages');
+      for (const msg of allMsgs) {
+        if (msg.studentId === cleanOldId) {
+          await setDocById('teacher_messages', msg.id, {
+            ...msg,
+            studentId: targetId,
+            studentName: newFullName
+          });
+        }
+      }
+
+      // ลบเอกสารรหัสนักเรียนเก่าหลังย้ายข้อมูลครบแล้ว
+      await deleteDocById('students', cleanOldId);
+    }
+
+    return { ok: true, student: updated, idChanged, oldStudentId: cleanOldId };
+  },
   deleteStudent: async (studentId: string) => {
     await deleteDocById('students', studentId);
     // Cascade delete student's submissions

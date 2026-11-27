@@ -165,6 +165,18 @@ export default function TeacherPortalPage() {
   const [resetTargetId, setResetTargetId] = useState<string | null>(null);
   const [resetPassVal, setResetPassVal] = useState('1234');
 
+  // Edit Student Profile Modal (แก้ไขรหัสนักเรียน ชื่อ-สกุล คำนำหน้า เลขที่ และห้องเรียน)
+  const [editStudentTarget, setEditStudentTarget] = useState<{
+    oldStudentId: string;
+    studentId: string;
+    prefix: string;
+    firstName: string;
+    lastName: string;
+    number: string;
+    classId: string;
+  } | null>(null);
+  const [savingStudentEdit, setSavingStudentEdit] = useState(false);
+
   const loadData = useCallback(async () => {
     setLoadError('');
     try {
@@ -593,6 +605,45 @@ export default function TeacherPortalPage() {
       setResetPassVal('1234');
     } else {
       showToast(json.message || 'รีเซ็ตรหัสไม่สำเร็จ', { kind: 'error' });
+    }
+  }
+
+  async function handleSaveStudentEdit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editStudentTarget) return;
+    setSavingStudentEdit(true);
+    try {
+      const res = await fetch('/api/teacher/students', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'edit_profile',
+          oldStudentId: editStudentTarget.oldStudentId,
+          newStudentId: editStudentTarget.studentId.trim(),
+          prefix: editStudentTarget.prefix,
+          firstName: editStudentTarget.firstName.trim(),
+          lastName: editStudentTarget.lastName.trim(),
+          number: Number(editStudentTarget.number) || 1,
+          classId: editStudentTarget.classId
+        })
+      });
+      const json = await res.json();
+      if (json.ok) {
+        showToast(
+          json.idChanged
+            ? `แก้ไขข้อมูลและเปลี่ยนรหัส ${editStudentTarget.oldStudentId} → ${editStudentTarget.studentId.trim()} เรียบร้อย (ย้ายคะแนนและ XP ตามให้อัตโนมัติ)`
+            : `บันทึกข้อมูลของ ${editStudentTarget.prefix}${editStudentTarget.firstName.trim()} ${editStudentTarget.lastName.trim()} เรียบร้อย`,
+          { kind: 'success' }
+        );
+        setEditStudentTarget(null);
+        await loadData();
+      } else {
+        showToast(json.message || 'แก้ไขข้อมูลนักเรียนไม่สำเร็จ', { kind: 'error' });
+      }
+    } catch {
+      showToast('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', { kind: 'error' });
+    } finally {
+      setSavingStudentEdit(false);
     }
   }
 
@@ -1031,6 +1082,152 @@ export default function TeacherPortalPage() {
               </button>
               <button type="submit" className="btn-primary-3d">
                 บันทึกรหัสผ่านใหม่
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Edit Student Profile Modal (ครูแก้ไขรหัสนักเรียน / ชื่อ-สกุล / เลขที่ / ห้อง) */}
+      {editStudentTarget && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="แก้ไขข้อมูลนักเรียน"
+          className="fixed inset-0 z-[70] bg-black/55 flex items-center justify-center p-4"
+          onClick={() => !savingStudentEdit && setEditStudentTarget(null)}
+        >
+          <form
+            onSubmit={handleSaveStudentEdit}
+            onClick={e => e.stopPropagation()}
+            className="tus-card max-w-lg w-full p-5 sm:p-6 space-y-4 max-h-[90vh] overflow-y-auto animate-scale-pop"
+          >
+            <div className="flex items-center justify-between gap-2 border-b border-[var(--border-subtle)] pb-3">
+              <div>
+                <h3 className="font-heading font-bold text-lg text-[var(--text-primary)]">
+                  แก้ไขข้อมูลนักเรียน
+                </h3>
+                <p className="text-xs text-[var(--text-secondary)]">
+                  รหัสเดิม: <span className="font-mono font-bold">{editStudentTarget.oldStudentId}</span>
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditStudentTarget(null)}
+                className="p-2 rounded-xl hover:bg-[var(--bg-surface-muted)] cursor-pointer"
+                aria-label="ปิดหน้าต่าง"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-heading font-semibold text-[var(--text-secondary)] mb-1">
+                  รหัสนักเรียน *
+                </label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  required
+                  value={editStudentTarget.studentId}
+                  onChange={e => setEditStudentTarget({ ...editStudentTarget, studentId: e.target.value })}
+                  placeholder="เช่น 6940310"
+                  className="tus-input font-mono font-bold"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-heading font-semibold text-[var(--text-secondary)] mb-1">
+                  เลขที่
+                </label>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={99}
+                  value={editStudentTarget.number}
+                  onChange={e => setEditStudentTarget({ ...editStudentTarget, number: e.target.value })}
+                  className="tus-input"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              <div>
+                <label className="block text-xs font-heading font-semibold text-[var(--text-secondary)] mb-1">
+                  คำนำหน้า
+                </label>
+                <select
+                  value={editStudentTarget.prefix}
+                  onChange={e => setEditStudentTarget({ ...editStudentTarget, prefix: e.target.value })}
+                  className="tus-input"
+                >
+                  <option value="นาย">นาย</option>
+                  <option value="นางสาว">นางสาว</option>
+                  <option value="เด็กชาย">เด็กชาย</option>
+                  <option value="เด็กหญิง">เด็กหญิง</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-heading font-semibold text-[var(--text-secondary)] mb-1">
+                  ชื่อจริง *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editStudentTarget.firstName}
+                  onChange={e => setEditStudentTarget({ ...editStudentTarget, firstName: e.target.value })}
+                  className="tus-input"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-heading font-semibold text-[var(--text-secondary)] mb-1">
+                  นามสกุล *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editStudentTarget.lastName}
+                  onChange={e => setEditStudentTarget({ ...editStudentTarget, lastName: e.target.value })}
+                  className="tus-input"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-heading font-semibold text-[var(--text-secondary)] mb-1">
+                ห้องเรียน
+              </label>
+              <select
+                value={editStudentTarget.classId}
+                onChange={e => setEditStudentTarget({ ...editStudentTarget, classId: e.target.value })}
+                className="tus-input"
+              >
+                <option value="">ยังไม่เข้าคลาส</option>
+                {activeClasses.map(c => (
+                  <option key={c.id} value={c.id}>
+                    ห้อง {c.name} ({c.classCode})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <p className="text-xs text-[var(--text-secondary)] bg-[var(--bg-surface-muted)] px-3 py-2 rounded-xl border border-[var(--border-subtle)]">
+              💡 หากเปลี่ยนรหัสนักเรียน ระบบจะย้ายคะแนนงาน ประวัติส่งงาน และ XP ไปยังรหัสใหม่ให้อัตโนมัติ
+            </p>
+
+            <div className="flex justify-end gap-2 pt-1">
+              <button
+                type="button"
+                disabled={savingStudentEdit}
+                onClick={() => setEditStudentTarget(null)}
+                className="btn-secondary-3d"
+              >
+                ยกเลิก
+              </button>
+              <button type="submit" disabled={savingStudentEdit} className="btn-primary-3d">
+                <CheckCircle2 className="w-4 h-4" />
+                {savingStudentEdit ? 'กำลังบันทึก...' : 'บันทึกการแก้ไข'}
               </button>
             </div>
           </form>
@@ -2231,24 +2428,43 @@ export default function TeacherPortalPage() {
                             <td className="py-3 px-3">{st.number}</td>
                             <td className="py-3 px-3 font-mono">{st.studentId}</td>
                             <td className="py-3 px-3 font-semibold">{st.prefix}{st.firstName} {st.lastName}</td>
-                            <td className="py-3 px-3 text-right space-x-2">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setResetTargetId(st.studentId);
-                                  setResetPassVal('1234');
-                                }}
-                                className="btn-secondary-3d btn-compact-3d"
-                              >
-                                <KeyRound className="w-4 h-4" /> รีเซ็ตรหัส
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteStudent(st.studentId)}
-                                className="btn-danger-3d btn-compact-3d"
-                              >
-                                <Trash2 className="w-4 h-4" /> ลบ
-                              </button>
+                            <td className="py-3 px-3 text-right">
+                              <div className="flex flex-wrap justify-end gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setEditStudentTarget({
+                                      oldStudentId: st.studentId,
+                                      studentId: st.studentId,
+                                      prefix: st.prefix || 'นาย',
+                                      firstName: st.firstName || '',
+                                      lastName: st.lastName || '',
+                                      number: String(st.number || 1),
+                                      classId: st.classId || ''
+                                    })
+                                  }
+                                  className="btn-secondary-3d btn-compact-3d"
+                                >
+                                  <Pencil className="w-4 h-4" /> แก้ไขข้อมูล
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setResetTargetId(st.studentId);
+                                    setResetPassVal('1234');
+                                  }}
+                                  className="btn-secondary-3d btn-compact-3d"
+                                >
+                                  <KeyRound className="w-4 h-4" /> รีเซ็ตรหัส
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteStudent(st.studentId)}
+                                  className="btn-danger-3d btn-compact-3d"
+                                >
+                                  <Trash2 className="w-4 h-4" /> ลบ
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         ))}

@@ -114,6 +114,55 @@ export async function PATCH(req: Request) {
 
   try {
     const body = await req.json();
+
+    // กรณีที่ 1: แก้ไขข้อมูลส่วนตัวของนักเรียน (ชื่อ-สกุล, คำนำหน้า, เลขที่, ห้องเรียน, และรหัสนักเรียน)
+    const isProfileEdit =
+      body.action === 'edit_profile' ||
+      body.newStudentId !== undefined ||
+      body.firstName !== undefined ||
+      body.lastName !== undefined ||
+      body.prefix !== undefined ||
+      body.number !== undefined ||
+      body.classId !== undefined;
+
+    if (isProfileEdit) {
+      const oldStudentId = String(body.oldStudentId || body.studentId || '').trim();
+      if (!oldStudentId) {
+        return NextResponse.json({ ok: false, message: 'กรุณาระบุรหัสนักเรียนเดิม' }, { status: 400 });
+      }
+
+      const result = await db.updateStudentProfile(oldStudentId, {
+        newStudentId: body.newStudentId !== undefined ? String(body.newStudentId) : undefined,
+        prefix: body.prefix !== undefined ? String(body.prefix) : undefined,
+        firstName: body.firstName !== undefined ? String(body.firstName) : undefined,
+        lastName: body.lastName !== undefined ? String(body.lastName) : undefined,
+        number: body.number !== undefined ? Number(body.number) : undefined,
+        classId: body.classId !== undefined ? String(body.classId) : undefined
+      });
+
+      if (!result.ok) {
+        return NextResponse.json({ ok: false, message: result.message }, { status: result.status });
+      }
+
+      const st = result.student;
+      await db.addAuditLog({
+        actorId: auth.user.id,
+        actorName: auth.user.nameTh,
+        actorRole: auth.user.role,
+        action: 'UPDATE_STUDENT_PROFILE',
+        detail: result.idChanged
+          ? `แก้ไขข้อมูลนักเรียนและเปลี่ยนรหัส ${oldStudentId} → ${st.studentId} (${st.prefix}${st.firstName} ${st.lastName})`
+          : `แก้ไขข้อมูลนักเรียน ${st.studentId} (${st.prefix}${st.firstName} ${st.lastName} เลขที่ ${st.number})`
+      });
+
+      return NextResponse.json({
+        ok: true,
+        student: sanitizeStudent(st),
+        idChanged: result.idChanged
+      });
+    }
+
+    // กรณีที่ 2: รีเซ็ตรหัสผ่านนักเรียน
     const studentId = String(body.studentId || '').trim();
     const newPassword = String(body.newPassword || '').trim();
 
@@ -140,7 +189,7 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error('[PATCH /api/teacher/students]', err);
-    return NextResponse.json({ ok: false, message: 'ไม่สามารถรีเซ็ตรหัสผ่านได้' }, { status: 500 });
+    return NextResponse.json({ ok: false, message: 'ไม่สามารถบันทึกการแก้ไขข้อมูลนักเรียนได้' }, { status: 500 });
   }
 }
 

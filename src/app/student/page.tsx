@@ -27,7 +27,8 @@ import {
   Cpu,
   FileSpreadsheet,
   Link2,
-  ShieldCheck
+  ShieldCheck,
+  Pencil
 } from 'lucide-react';
 import { PortalHeader } from '@/components/PortalHeader';
 import { BannerCarousel } from '@/components/BannerCarousel';
@@ -115,6 +116,15 @@ export default function StudentPortalPage() {
   const [classCodeInput, setClassCodeInput] = useState('');
   const [changeClassOpen, setChangeClassOpen] = useState(false);
   const [joining, setJoining] = useState(false);
+
+  // Edit Own Profile Modal (นักเรียนแก้ไขรหัสนักเรียน ชื่อ-สกุล คำนำหน้า และเลขที่ของตัวเองได้)
+  const [editProfileOpen, setEditProfileOpen] = useState(false);
+  const [editStId, setEditStId] = useState('');
+  const [editPrefix, setEditPrefix] = useState('นาย');
+  const [editFirst, setEditFirst] = useState('');
+  const [editLast, setEditLast] = useState('');
+  const [editNum, setEditNum] = useState('1');
+  const [savingProfile, setSavingProfile] = useState(false);
 
   // Course Description Expand/Collapse
   const [descExpanded, setDescExpanded] = useState(false);
@@ -415,6 +425,55 @@ export default function StudentPortalPage() {
     }
   }
 
+  function openEditProfile() {
+    if (!data?.student) return;
+    setEditStId(data.student.studentId || '');
+    setEditPrefix(data.student.prefix || 'นาย');
+    setEditFirst(data.student.firstName || '');
+    setEditLast(data.student.lastName || '');
+    setEditNum(String(data.student.number || 1));
+    setEditProfileOpen(true);
+  }
+
+  async function handleSaveOwnProfile(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editStId.trim() || !editFirst.trim() || !editLast.trim()) {
+      showToast('กรุณากรอกรหัสนักเรียน ชื่อจริง และนามสกุลให้ครบถ้วน', { kind: 'error' });
+      return;
+    }
+    setSavingProfile(true);
+    try {
+      const res = await fetch('/api/student/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          studentId: editStId.trim(),
+          prefix: editPrefix,
+          firstName: editFirst.trim(),
+          lastName: editLast.trim(),
+          number: Number(editNum) || 1
+        })
+      });
+      const json = await res.json();
+      if (!res.ok || !json.ok) {
+        showToast(json.message || 'บันทึกข้อมูลส่วนตัวไม่สำเร็จ', { kind: 'error' });
+        return;
+      }
+      showToast(
+        json.idChanged
+          ? `อัปเดตข้อมูลและเปลี่ยนรหัสนักเรียนเป็น ${editStId.trim()} เรียบร้อย! (คะแนนและ XP ย้ายตามให้อัตโนมัติ)`
+          : 'บันทึกข้อมูลส่วนตัวเรียบร้อยแล้ว!',
+        { kind: 'success' }
+      );
+      setEditProfileOpen(false);
+      await loadDashboard();
+    } catch {
+      showToast('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', { kind: 'error' });
+    } finally {
+      setSavingProfile(false);
+    }
+  }
+
   // Loading Skeleton State
   if (loading) {
     return (
@@ -526,6 +585,139 @@ export default function StudentPortalPage() {
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {/* Modal แก้ไขข้อมูลส่วนตัวนักเรียน (แก้ชื่อ-สกุล คำนำหน้า เลขที่ และรหัสนักเรียนผิดได้เอง) */}
+      {editProfileOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="แก้ไขข้อมูลนักเรียนของฉัน"
+          className="fixed inset-0 z-[70] bg-black/55 flex items-center justify-center p-4"
+          onClick={() => !savingProfile && setEditProfileOpen(false)}
+        >
+          <form
+            onSubmit={handleSaveOwnProfile}
+            onClick={e => e.stopPropagation()}
+            className="tus-card max-w-md w-full p-5 sm:p-6 space-y-4 max-h-[90vh] overflow-y-auto animate-scale-pop"
+          >
+            <div className="flex items-center justify-between gap-2 border-b border-[var(--border-subtle)] pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-xl bg-[var(--color-primary-soft)] text-[var(--color-primary)] flex items-center justify-center">
+                  <Pencil className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-heading font-bold text-lg text-[var(--text-primary)]">
+                    แก้ไขข้อมูลส่วนตัว
+                  </h3>
+                  <p className="text-xs text-[var(--text-secondary)]">
+                    แก้ชื่อ-นามสกุล เลขที่ หรือรหัสนักเรียนที่กรอกผิด
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditProfileOpen(false)}
+                className="p-2 rounded-xl hover:bg-[var(--bg-surface-muted)] cursor-pointer"
+                aria-label="ปิดหน้าต่าง"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-heading font-semibold text-[var(--text-secondary)] mb-1">
+                  รหัสนักเรียน *
+                </label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  required
+                  value={editStId}
+                  onChange={e => setEditStId(e.target.value)}
+                  placeholder="เช่น 6940310"
+                  className="tus-input font-mono font-bold"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-heading font-semibold text-[var(--text-secondary)] mb-1">
+                  เลขที่
+                </label>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={99}
+                  value={editNum}
+                  onChange={e => setEditNum(e.target.value)}
+                  className="tus-input"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              <div>
+                <label className="block text-xs font-heading font-semibold text-[var(--text-secondary)] mb-1">
+                  คำนำหน้า
+                </label>
+                <select
+                  value={editPrefix}
+                  onChange={e => setEditPrefix(e.target.value)}
+                  className="tus-input"
+                >
+                  <option value="นาย">นาย</option>
+                  <option value="นางสาว">นางสาว</option>
+                  <option value="เด็กชาย">เด็กชาย</option>
+                  <option value="เด็กหญิง">เด็กหญิง</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-heading font-semibold text-[var(--text-secondary)] mb-1">
+                  ชื่อจริง *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editFirst}
+                  onChange={e => setEditFirst(e.target.value)}
+                  className="tus-input"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-heading font-semibold text-[var(--text-secondary)] mb-1">
+                  นามสกุล *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editLast}
+                  onChange={e => setEditLast(e.target.value)}
+                  className="tus-input"
+                />
+              </div>
+            </div>
+
+            <p className="text-xs text-[var(--text-secondary)] bg-[var(--bg-surface-muted)] px-3 py-2 rounded-xl border border-[var(--border-subtle)]">
+              💡 หากแก้ไขรหัสนักเรียน คะแนน งานที่ส่ง และ XP ทั้งหมดจะย้ายตามไปอัตโนมัติ (ใช้รหัสใหม่ในการเข้าสู่ระบบครั้งถัดไป)
+            </p>
+
+            <div className="flex justify-end gap-2 pt-1">
+              <button
+                type="button"
+                disabled={savingProfile}
+                onClick={() => setEditProfileOpen(false)}
+                className="btn-secondary-3d"
+              >
+                ยกเลิก
+              </button>
+              <button type="submit" disabled={savingProfile} className="btn-primary-3d">
+                <CheckCircle2 className="w-4 h-4" />
+                {savingProfile ? 'กำลังบันทึก...' : 'บันทึกข้อมูล'}
+              </button>
+            </div>
+          </form>
         </div>
       )}
 
@@ -741,6 +933,13 @@ export default function StudentPortalPage() {
                             className="text-sm text-[var(--color-primary)] hover:underline font-heading font-semibold cursor-pointer px-1"
                           >
                             เปลี่ยนรหัสคลาส
+                          </button>
+                          <button
+                            type="button"
+                            onClick={openEditProfile}
+                            className="inline-flex items-center gap-1 text-xs sm:text-sm font-heading font-bold px-2.5 py-1 rounded-xl bg-[var(--bg-surface-muted)] border border-[var(--border-strong)] text-[var(--color-primary)] hover:border-[var(--color-primary)] cursor-pointer transition"
+                          >
+                            <Pencil className="w-3.5 h-3.5" /> แก้ไขข้อมูลส่วนตัว
                           </button>
                         </div>
                         <h1 className="font-heading font-bold text-xl sm:text-2xl text-[var(--text-primary)] pt-1">

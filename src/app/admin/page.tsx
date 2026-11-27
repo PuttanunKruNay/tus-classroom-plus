@@ -24,7 +24,8 @@ import {
   Cloud,
   X,
   GraduationCap,
-  ShieldCheck
+  ShieldCheck,
+  Pencil
 } from 'lucide-react';
 import { PortalHeader } from '@/components/PortalHeader';
 import { useToast } from '@/components/ToastProvider';
@@ -69,6 +70,16 @@ export default function AdminPortalPage() {
   // Quick Reset Student Password Modal
   const [resetStudentTarget, setResetStudentTarget] = useState<AdminStudentView | null>(null);
   const [resetStudentPass, setResetStudentPass] = useState('1234');
+  const [editStudentTarget, setEditStudentTarget] = useState<{
+    oldStudentId: string;
+    studentId: string;
+    prefix: string;
+    firstName: string;
+    lastName: string;
+    number: string;
+    classId: string;
+  } | null>(null);
+  const [savingStudentEdit, setSavingStudentEdit] = useState(false);
 
   // Staff User form
   const [staffUser, setStaffUser] = useState('');
@@ -268,6 +279,43 @@ export default function AdminPortalPage() {
     }
   }
 
+  async function handleSaveStudentEdit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editStudentTarget) return;
+    setSavingStudentEdit(true);
+    try {
+      const res = await fetch('/api/teacher/students', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'edit_profile',
+          oldStudentId: editStudentTarget.oldStudentId,
+          newStudentId: editStudentTarget.studentId.trim(),
+          prefix: editStudentTarget.prefix,
+          firstName: editStudentTarget.firstName.trim(),
+          lastName: editStudentTarget.lastName.trim(),
+          number: Number(editStudentTarget.number) || 1,
+          classId: editStudentTarget.classId
+        })
+      });
+      const json = await res.json();
+      if (json.ok) {
+        showToast(
+          json.idChanged
+            ? `เปลี่ยนรหัส ${editStudentTarget.oldStudentId} → ${editStudentTarget.studentId.trim()} และอัปเดตข้อมูลแล้ว`
+            : 'อัปเดตข้อมูลนักเรียนเรียบร้อยแล้ว',
+          { kind: 'success' }
+        );
+        setEditStudentTarget(null);
+        await loadData();
+      } else {
+        showToast(json.message || 'แก้ไขข้อมูลไม่สำเร็จ', { kind: 'error' });
+      }
+    } finally {
+      setSavingStudentEdit(false);
+    }
+  }
+
   async function handleSaveStaff(e: React.FormEvent) {
     e.preventDefault();
     const res = await fetch('/api/admin/users', {
@@ -464,6 +512,136 @@ export default function AdminPortalPage() {
               </button>
               <button type="submit" className="btn-primary-3d">
                 บันทึกรหัสผ่านใหม่
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Edit Student Profile Modal (Admin) */}
+      {editStudentTarget && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="แก้ไขข้อมูลนักเรียน"
+          className="fixed inset-0 z-[70] bg-black/55 flex items-center justify-center p-4"
+          onClick={() => !savingStudentEdit && setEditStudentTarget(null)}
+        >
+          <form
+            onSubmit={handleSaveStudentEdit}
+            onClick={e => e.stopPropagation()}
+            className="tus-card max-w-lg w-full p-5 sm:p-6 space-y-4 max-h-[90vh] overflow-y-auto animate-scale-pop"
+          >
+            <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3">
+              <div>
+                <h3 className="font-heading font-bold text-lg">แก้ไขข้อมูลนักเรียน</h3>
+                <p className="text-xs text-[var(--text-secondary)]">
+                  รหัสเดิม: <strong className="font-mono">{editStudentTarget.oldStudentId}</strong>
+                </p>
+              </div>
+              <button type="button" onClick={() => setEditStudentTarget(null)} className="p-1.5 cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-heading font-semibold text-[var(--text-secondary)] mb-1">
+                  รหัสนักเรียน *
+                </label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  required
+                  value={editStudentTarget.studentId}
+                  onChange={e => setEditStudentTarget({ ...editStudentTarget, studentId: e.target.value })}
+                  className="tus-input font-mono font-bold"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-heading font-semibold text-[var(--text-secondary)] mb-1">
+                  เลขที่
+                </label>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={99}
+                  value={editStudentTarget.number}
+                  onChange={e => setEditStudentTarget({ ...editStudentTarget, number: e.target.value })}
+                  className="tus-input"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              <div>
+                <label className="block text-xs font-heading font-semibold text-[var(--text-secondary)] mb-1">
+                  คำนำหน้า
+                </label>
+                <select
+                  value={editStudentTarget.prefix}
+                  onChange={e => setEditStudentTarget({ ...editStudentTarget, prefix: e.target.value })}
+                  className="tus-input"
+                >
+                  <option value="นาย">นาย</option>
+                  <option value="นางสาว">นางสาว</option>
+                  <option value="เด็กชาย">เด็กชาย</option>
+                  <option value="เด็กหญิง">เด็กหญิง</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-heading font-semibold text-[var(--text-secondary)] mb-1">
+                  ชื่อจริง *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editStudentTarget.firstName}
+                  onChange={e => setEditStudentTarget({ ...editStudentTarget, firstName: e.target.value })}
+                  className="tus-input"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-heading font-semibold text-[var(--text-secondary)] mb-1">
+                  นามสกุล *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editStudentTarget.lastName}
+                  onChange={e => setEditStudentTarget({ ...editStudentTarget, lastName: e.target.value })}
+                  className="tus-input"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-heading font-semibold text-[var(--text-secondary)] mb-1">
+                ห้องเรียน
+              </label>
+              <select
+                value={editStudentTarget.classId}
+                onChange={e => setEditStudentTarget({ ...editStudentTarget, classId: e.target.value })}
+                className="tus-input"
+              >
+                <option value="">ยังไม่เข้าคลาส</option>
+                {activeRooms.map(room => (
+                  <option key={room.id} value={room.id}>
+                    ห้อง {room.name} ({room.classCode})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex justify-end gap-2 pt-1">
+              <button
+                type="button"
+                disabled={savingStudentEdit}
+                onClick={() => setEditStudentTarget(null)}
+                className="btn-secondary-3d"
+              >
+                ยกเลิก
+              </button>
+              <button type="submit" disabled={savingStudentEdit} className="btn-primary-3d">
+                <CheckCircle2 className="w-4 h-4" />
+                {savingStudentEdit ? 'กำลังบันทึก...' : 'บันทึกการแก้ไข'}
               </button>
             </div>
           </form>
@@ -711,16 +889,35 @@ export default function AdminPortalPage() {
                                 )}
                               </td>
                               <td className="py-3 px-3 text-right whitespace-nowrap">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setResetStudentTarget(st);
-                                    setResetStudentPass(st.plainPassword || '1234');
-                                  }}
-                                  className="btn-secondary-3d btn-compact-3d"
-                                >
-                                  <KeyRound className="w-3.5 h-3.5" /> เปลี่ยนรหัส
-                                </button>
+                                <div className="inline-flex items-center gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setEditStudentTarget({
+                                        oldStudentId: st.studentId,
+                                        studentId: st.studentId,
+                                        prefix: st.prefix || 'นาย',
+                                        firstName: st.firstName || '',
+                                        lastName: st.lastName || '',
+                                        number: String(st.number || 1),
+                                        classId: st.classId || ''
+                                      })
+                                    }
+                                    className="btn-secondary-3d btn-compact-3d"
+                                  >
+                                    <Pencil className="w-3.5 h-3.5" /> แก้ไข
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setResetStudentTarget(st);
+                                      setResetStudentPass(st.plainPassword || '1234');
+                                    }}
+                                    className="btn-secondary-3d btn-compact-3d"
+                                  >
+                                    <KeyRound className="w-3.5 h-3.5" /> เปลี่ยนรหัส
+                                  </button>
+                                </div>
                               </td>
                             </tr>
                           );
