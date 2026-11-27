@@ -351,12 +351,12 @@ export function FloatingAiTutor({
             : `โควตาวันนี้คงเหลือ ${remaining}/${dailyLimit} ครั้ง`;
 
   return (
-    <div className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] md:bottom-5 right-2.5 sm:right-4 z-50">
+    <div className="fixed bottom-[calc(4.8rem+env(safe-area-inset-bottom))] md:bottom-5 right-3 sm:right-4 z-50">
       {open && (
         <div
           role="dialog"
           aria-label="แผงแชทฮีลใจ-บอตแสนรู้"
-          className="mb-2.5 w-[calc(100vw-1.25rem)] sm:w-[400px] h-[min(70dvh,540px)] tus-card overflow-hidden flex flex-col shadow-2xl border-2 border-pink-300 dark:border-pink-700 animate-scale-pop"
+          className="fixed inset-x-3 bottom-[calc(8.6rem+env(safe-area-inset-bottom))] md:static md:mb-3 md:w-[400px] h-[min(68dvh,540px)] tus-card overflow-hidden flex flex-col shadow-2xl border-2 border-pink-300 dark:border-pink-700 animate-scale-pop"
         >
           {/* Header สีชมพูสดใสน่ารัก */}
           <div className="bg-gradient-to-r from-[#ec4899] via-[#f43f8e] to-[#d81b60] text-white px-4 py-3 flex items-center justify-between gap-2">

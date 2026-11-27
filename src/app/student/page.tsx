@@ -529,7 +529,7 @@ export default function StudentPortalPage() {
         </div>
       )}
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 space-y-6">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-5 space-y-5 sm:space-y-6">
         {!data.hasJoinedClass ? (
           <div className="max-w-lg mx-auto tus-card p-7 text-center space-y-5 mt-6 animate-scale-pop">
             <div className="w-16 h-16 rounded-2xl bg-[var(--color-primary-soft)] text-[var(--color-primary)] border border-[var(--color-primary-border)] mx-auto flex items-center justify-center">
@@ -586,37 +586,129 @@ export default function StudentPortalPage() {
               })}
             </nav>
 
-            {/* Bottom Navigation สำหรับมือถือ (แสดงครบ 7 ปุ่มพอดีจอ ไม่ต้องเลื่อนแนวนอน) */}
+            {/* Bottom Navigation สำหรับมือถือแบบ 5 ปุ่มใหญ่สบายนิ้ว (ไม่อัด 7 ปุ่มเล็กๆ) */}
             <nav
               aria-label="เมนูล่างมือถือ"
-              className="md:hidden fixed bottom-0 inset-x-0 z-40 tus-bottom-nav pb-safe px-1 pt-1.5"
+              className="md:hidden fixed bottom-0 inset-x-0 z-40 tus-bottom-nav pb-safe px-1.5 pt-1.5"
             >
-              <div className="grid grid-cols-7 gap-0.5">
-                {tabs.map(tab => {
-                  const Icon = tab.icon;
-                  const active = activeTab === tab.id;
+              <div className="grid grid-cols-5 gap-1">
+                {[
+                  {
+                    id: 'home',
+                    label: 'หน้าแรก',
+                    icon: Home,
+                    active: activeTab === 'home',
+                    onClick: () => setActiveTab('home')
+                  },
+                  {
+                    id: 'lessons',
+                    label: 'บทเรียน',
+                    icon: BookOpen,
+                    active: activeTab === 'lessons',
+                    onClick: () => setActiveTab('lessons')
+                  },
+                  {
+                    id: 'work',
+                    label: 'งาน/สอบ',
+                    icon: ClipboardCheck,
+                    active: activeTab === 'quizzes' || activeTab === 'line',
+                    onClick: () => setActiveTab(activeTab === 'line' ? 'line' : 'quizzes')
+                  },
+                  {
+                    id: 'play',
+                    label: 'เกม/วงจร',
+                    icon: Gamepad2,
+                    active: activeTab === 'game' || activeTab === 'circuit',
+                    onClick: () => setActiveTab(activeTab === 'circuit' ? 'circuit' : 'game')
+                  },
+                  {
+                    id: 'grades',
+                    label: 'คะแนน',
+                    icon: Award,
+                    active: activeTab === 'grades',
+                    onClick: () => setActiveTab('grades')
+                  }
+                ].map(item => {
+                  const Icon = item.icon;
                   return (
-                      <button
-                        key={tab.id}
-                        type="button"
-                        onClick={() => {
-                          setActiveTab(tab.id);
-                          window.scrollTo({ top: 0, behavior: 'smooth' });
-                        }}
-                        className={`relative min-h-[54px] px-0.5 py-1.5 rounded-xl flex flex-col items-center justify-center gap-0.5 cursor-pointer transition active:scale-95 ${
-                          active ? 'text-[var(--color-primary)] bg-[var(--color-primary-soft)] font-bold' : 'text-[var(--text-muted)]'
-                        }`}
-                      >
-                        {active && (
-                          <span className="absolute top-0.5 w-6 h-1 rounded-full bg-[var(--color-primary)]" />
-                        )}
-                        <Icon className="w-5 h-5 shrink-0" />
-                        <span className="text-[10px] sm:text-[11px] font-heading leading-tight">{tab.short}</span>
-                      </button>
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => {
+                        item.onClick();
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
+                      className={`relative min-h-[56px] px-1 py-1.5 rounded-xl flex flex-col items-center justify-center gap-0.5 cursor-pointer transition active:scale-95 ${
+                        item.active
+                          ? 'text-[var(--color-primary)] bg-[var(--color-primary-soft)] font-bold'
+                          : 'text-[var(--text-muted)]'
+                      }`}
+                    >
+                      {item.active && (
+                        <span className="absolute top-0.5 w-7 h-1 rounded-full bg-[var(--color-primary)]" />
+                      )}
+                      <Icon className="w-5 h-5 shrink-0" />
+                      <span className="text-[11px] font-heading leading-tight">{item.label}</span>
+                    </button>
                   );
                 })}
               </div>
             </nav>
+
+            {/* แถบสลับย่อยขนาดใหญ่บนมือถือสำหรับกลุ่ม งาน/สอบ และ เกม/วงจร */}
+            {(activeTab === 'quizzes' || activeTab === 'line') && (
+              <div className="md:hidden grid grid-cols-2 gap-2 p-1.5 rounded-2xl tus-card">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('quizzes')}
+                  className={`min-h-[46px] px-3 py-2 rounded-xl text-sm font-heading font-bold inline-flex items-center justify-center gap-1.5 cursor-pointer transition ${
+                    activeTab === 'quizzes'
+                      ? 'bg-[var(--color-primary)] text-white shadow-sm'
+                      : 'text-[var(--text-secondary)]'
+                  }`}
+                >
+                  <ClipboardCheck className="w-4 h-4" /> บททดสอบ (Form)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('line')}
+                  className={`min-h-[46px] px-3 py-2 rounded-xl text-sm font-heading font-bold inline-flex items-center justify-center gap-1.5 cursor-pointer transition ${
+                    activeTab === 'line'
+                      ? 'bg-[var(--color-primary)] text-white shadow-sm'
+                      : 'text-[var(--text-secondary)]'
+                  }`}
+                >
+                  <Send className="w-4 h-4" /> ส่งงาน LINE
+                </button>
+              </div>
+            )}
+
+            {(activeTab === 'game' || activeTab === 'circuit') && (
+              <div className="md:hidden grid grid-cols-2 gap-2 p-1.5 rounded-2xl tus-card">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('game')}
+                  className={`min-h-[46px] px-3 py-2 rounded-xl text-sm font-heading font-bold inline-flex items-center justify-center gap-1.5 cursor-pointer transition ${
+                    activeTab === 'game'
+                      ? 'bg-[var(--color-primary)] text-white shadow-sm'
+                      : 'text-[var(--text-secondary)]'
+                  }`}
+                >
+                  <Gamepad2 className="w-4 h-4" /> Blocky Blast 8×8
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('circuit')}
+                  className={`min-h-[46px] px-3 py-2 rounded-xl text-sm font-heading font-bold inline-flex items-center justify-center gap-1.5 cursor-pointer transition ${
+                    activeTab === 'circuit'
+                      ? 'bg-[var(--color-primary)] text-white shadow-sm'
+                      : 'text-[var(--text-secondary)]'
+                  }`}
+                >
+                  <Cpu className="w-4 h-4" /> ต่อวงจร TechTale
+                </button>
+              </div>
+            )}
 
             <div key={activeTab} className="animate-fade-up">
               {/* ================================================================
@@ -898,14 +990,68 @@ export default function StudentPortalPage() {
                     </div>
                   ) : (
                     <>
-                      {/* ปุ่มเลือกบทเรียนครบทั้ง 6 บท */}
-                      <div className="tus-card p-4 sm:p-5 space-y-3">
+                      {/* ตัวเลือกบทเรียนแบบกระชับบนมือถือ (ไม่ต้องไถข้าม 6 การ์ดก่อนจะเจอเนื้อหา) + การ์ด 6 บทบนคอม */}
+                      <div className="tus-card p-3.5 sm:p-5 space-y-3">
                         <div className="flex items-center justify-between gap-2">
                           <h2 className="font-heading font-bold text-sm sm:text-base text-[var(--color-primary)]">
                             เลือกบทเรียน ({data.lessons.length} บท • {data.lessons.reduce((s, l) => s + (l.slides?.length || 0), 0)} ไฟล์สไลด์)
                           </h2>
                         </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+
+                        {/* Mobile Compact Chapter Selector */}
+                        <div className="md:hidden flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const currIdx = Math.max(0, data.lessons.findIndex(l => l.id === currentLesson?.id));
+                              const prevLesson = data.lessons[(currIdx - 1 + data.lessons.length) % data.lessons.length];
+                              if (prevLesson) {
+                                setSelectedLessonId(prevLesson.id);
+                                setSelectedSlideIdx(0);
+                                setDeckIdx(0);
+                              }
+                            }}
+                            className="btn-secondary-3d btn-compact-3d !px-2.5 shrink-0"
+                            aria-label="บทเรียนก่อนหน้า"
+                          >
+                            <ChevronLeft className="w-5 h-5" />
+                          </button>
+                          <select
+                            value={currentLesson?.id || ''}
+                            onChange={e => {
+                              setSelectedLessonId(e.target.value);
+                              setSelectedSlideIdx(0);
+                              setDeckIdx(0);
+                            }}
+                            aria-label="เลือกบทเรียน"
+                            className="tus-input font-heading font-bold text-sm flex-1 min-w-0"
+                          >
+                            {data.lessons.map(lesson => (
+                              <option key={lesson.id} value={lesson.id}>
+                                {lesson.chapter}
+                              </option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const currIdx = Math.max(0, data.lessons.findIndex(l => l.id === currentLesson?.id));
+                              const nextLesson = data.lessons[(currIdx + 1) % data.lessons.length];
+                              if (nextLesson) {
+                                setSelectedLessonId(nextLesson.id);
+                                setSelectedSlideIdx(0);
+                                setDeckIdx(0);
+                              }
+                            }}
+                            className="btn-secondary-3d btn-compact-3d !px-2.5 shrink-0"
+                            aria-label="บทเรียนถัดไป"
+                          >
+                            <ChevronRight className="w-5 h-5" />
+                          </button>
+                        </div>
+
+                        {/* Desktop & Tablet Full 6-Chapter Grid */}
+                        <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-2.5">
                           {data.lessons.map(lesson => {
                             const active = currentLesson?.id === lesson.id;
                             return (
@@ -1034,7 +1180,7 @@ export default function StudentPortalPage() {
                                         href={activeSlide.externalUrl || activeSlide.embedUrl}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="btn-secondary-3d btn-compact-3d"
+                                        className="btn-secondary-3d btn-compact-3d w-full sm:w-auto"
                                       >
                                         เปิดเต็มจอ / ดาวน์โหลด PDF <ExternalLink className="w-4 h-4" />
                                       </a>
@@ -1657,19 +1803,20 @@ export default function StudentPortalPage() {
         )}
       </main>
 
-      {/* ปุ่มรูปลอยติดต่อครูเนย์ / ครูขวัญ */}
-      <FloatingContactTeacher
-        studentId={data.student.studentId}
-        studentName={fullName}
-        classNameLabel={classLabel}
-      />
+      {/* ปุ่มลอยติดต่อครูและฮีลใจ: ซ่อนอัตโนมัติเฉพาะตอนเล่นเกม/ต่อวงจรบนมือถือเพื่อไม่ให้บังนิ้วเวลาเล่น */}
+      <div className={activeTab === 'game' || activeTab === 'circuit' ? 'hidden md:block' : ''}>
+        <FloatingContactTeacher
+          studentId={data.student.studentId}
+          studentName={fullName}
+          classNameLabel={classLabel}
+        />
 
-      {/* ผู้ช่วย AI ปุ่มกลมมุมล่างขวา เห็นได้ทุกหน้า */}
-      <FloatingAiTutor
-        externalPrompt={aiPromptTrigger}
-        initialRemaining={data.quotas.dailyAiRemaining}
-        dailyLimit={data.quotas.dailyAiLimit}
-      />
+        <FloatingAiTutor
+          externalPrompt={aiPromptTrigger}
+          initialRemaining={data.quotas.dailyAiRemaining}
+          dailyLimit={data.quotas.dailyAiLimit}
+        />
+      </div>
     </div>
   );
 }

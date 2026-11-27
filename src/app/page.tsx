@@ -177,7 +177,7 @@ export default function HomePage() {
         }
       />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-5 sm:space-y-6">
         {/* Error State */}
         {loadError && (
           <div className="tus-card p-6 border-2 border-[var(--color-danger)] flex flex-wrap items-center justify-between gap-4">

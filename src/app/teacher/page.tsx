@@ -921,7 +921,7 @@ export default function TeacherPortalPage() {
   );
 
   return (
-    <div className="min-h-screen flex flex-col pb-24 lg:pb-12">
+    <div className="min-h-screen flex flex-col pb-28 lg:pb-12">
       <PortalHeader
         subtitle={`${data.courseOverview.courseCode} ${data.courseOverview.courseNameTh}`}
         userName={data.user.nameTh}
@@ -1364,7 +1364,7 @@ export default function TeacherPortalPage() {
       )}
 
       {/* Main Layout: Left Sidebar (Desktop) + Content */}
-      <div className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      <div className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-start">
         <aside className="hidden lg:block lg:col-span-3 sticky top-24 tus-card p-4">
           {sidebarContent}
         </aside>
@@ -1631,17 +1631,17 @@ export default function TeacherPortalPage() {
           {/* VIEW: COURSE WORKSPACE (Google Classroom Tabs) */}
           {sidebarView === 'course' && (
             <div className="space-y-5">
-              {/* Course Tabs: แสดงครบทุกปุ่ม 2 แถวบนคอม/แท็บเล็ต และ 2 คอลัมน์บนมือถือ ไม่ต้องเลื่อนซ้าย-ขวา */}
-              <div className="tus-card p-2 grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+              {/* Course Tabs: 2 แถวกระชับบนมือถือ (4 คอลัมน์) ไม่กินพื้นที่หน้าจอสูงเกินไป และไม่ต้องเลื่อนซ้าย-ขวา */}
+              <div className="tus-card p-1.5 sm:p-2 grid grid-cols-4 gap-1 sm:gap-1.5">
                 {[
-                  { id: 'stream' as const, label: 'ฟอรัม', icon: MessageSquare, badge: 0 },
-                  { id: 'classwork' as const, label: 'งานของชั้นเรียน', icon: FolderKanban, badge: 0 },
-                  { id: 'forms' as const, label: 'บททดสอบ (Form)', icon: ClipboardCheck, badge: 0 },
-                  { id: 'people' as const, label: 'บุคคล', icon: Users, badge: 0 },
-                  { id: 'grades' as const, label: 'คะแนน', icon: BarChart3, badge: 0 },
-                  { id: 'line' as const, label: 'ตรวจงาน LINE', icon: CheckSquare, badge: pendingLineCount },
-                  { id: 'issues' as const, label: 'รายงานปัญหา', icon: MessageSquareWarning, badge: openIssuesCount },
-                  { id: 'xp' as const, label: 'เกม XP', icon: Trophy, badge: 0 }
+                  { id: 'stream' as const, label: 'ฟอรัม', short: 'ฟอรัม', icon: MessageSquare, badge: 0 },
+                  { id: 'classwork' as const, label: 'งานของชั้นเรียน', short: 'งาน', icon: FolderKanban, badge: 0 },
+                  { id: 'forms' as const, label: 'บททดสอบ (Form)', short: 'สอบ', icon: ClipboardCheck, badge: 0 },
+                  { id: 'people' as const, label: 'บุคคล', short: 'บุคคล', icon: Users, badge: 0 },
+                  { id: 'grades' as const, label: 'คะแนน', short: 'คะแนน', icon: BarChart3, badge: 0 },
+                  { id: 'line' as const, label: 'ตรวจงาน LINE', short: 'LINE', icon: CheckSquare, badge: pendingLineCount },
+                  { id: 'issues' as const, label: 'รายงานปัญหา', short: 'ปัญหา', icon: MessageSquareWarning, badge: openIssuesCount },
+                  { id: 'xp' as const, label: 'เกม XP', short: 'XP', icon: Trophy, badge: 0 }
                 ].map(t => {
                   const Icon = t.icon;
                   const active = courseTab === t.id;
@@ -1650,17 +1650,18 @@ export default function TeacherPortalPage() {
                       key={t.id}
                       type="button"
                       onClick={() => setCourseTab(t.id)}
-                      className={`min-h-[44px] px-2.5 sm:px-3 py-2 rounded-xl text-xs sm:text-sm font-heading font-bold inline-flex items-center justify-center gap-1.5 cursor-pointer transition text-center ${
+                      className={`relative min-h-[46px] px-1.5 sm:px-3 py-1.5 sm:py-2 rounded-xl text-[11px] sm:text-sm font-heading font-bold flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 cursor-pointer transition text-center active:scale-95 ${
                         active
                           ? 'bg-[var(--color-primary)] text-white shadow-sm'
                           : 'bg-[var(--bg-surface-muted)]/60 text-[var(--text-secondary)] hover:bg-[var(--color-primary-soft)] hover:text-[var(--color-primary)]'
                       }`}
                     >
                       <Icon className="w-4 h-4 shrink-0" />
-                      <span className="truncate">{t.label}</span>
+                      <span className="sm:hidden leading-tight truncate max-w-full">{t.short}</span>
+                      <span className="hidden sm:inline truncate">{t.label}</span>
                       {t.badge > 0 && (
                         <span
-                          className={`px-1.5 py-0.5 rounded-full text-[11px] font-mono font-bold shrink-0 ${
+                          className={`absolute top-1 right-1 sm:static px-1.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-mono font-bold shrink-0 ${
                             active
                               ? 'bg-white text-[var(--color-primary)]'
                               : 'bg-[var(--color-danger)] text-white'
@@ -2392,16 +2393,15 @@ export default function TeacherPortalPage() {
         </main>
       </div>
 
-      {/* Mobile Bottom Nav (แสดงครบทุกปุ่มพอดีจอ ไม่ต้องเลื่อนแนวนอน) */}
-      <nav aria-label="เมนูล่างครูผู้สอน" className="lg:hidden fixed bottom-0 inset-x-0 z-40 tus-bottom-nav pb-safe px-1 pt-1.5">
-        <div className="grid grid-cols-6 gap-0.5">
+      {/* Mobile Bottom Nav แบบ 5 ปุ่มใหญ่สบายนิ้ว + ปุ่มเมนูทั้งหมดเปิด Drawer */}
+      <nav aria-label="เมนูล่างครูผู้สอน" className="lg:hidden fixed bottom-0 inset-x-0 z-40 tus-bottom-nav pb-safe px-1.5 pt-1.5">
+        <div className="grid grid-cols-5 gap-1">
           {[
             { id: 'home' as const, label: 'ชั้นเรียน', icon: Home, badge: 0, onClick: () => setSidebarView('home'), active: sidebarView === 'home' },
-            { id: 'course' as const, label: 'ห้องเรียน', icon: MessageSquare, badge: 0, onClick: () => { setSidebarView('course'); setCourseTab('stream'); }, active: sidebarView === 'course' && courseTab !== 'forms' },
-            { id: 'forms' as const, label: 'สอบ', icon: ClipboardCheck, badge: 0, onClick: () => { setSidebarView('course'); setCourseTab('forms'); }, active: sidebarView === 'course' && courseTab === 'forms' },
+            { id: 'course' as const, label: 'ห้องเรียน', icon: MessageSquare, badge: 0, onClick: () => setSidebarView('course'), active: sidebarView === 'course' },
             { id: 'line' as const, label: 'LINE', icon: CheckSquare, badge: pendingLineCount, onClick: () => setSidebarView('line'), active: sidebarView === 'line' },
             { id: 'issues' as const, label: 'ปัญหา', icon: MessageSquareWarning, badge: openIssuesCount, onClick: () => setSidebarView('issues'), active: sidebarView === 'issues' },
-            { id: 'xp' as const, label: 'XP', icon: Trophy, badge: 0, onClick: () => setSidebarView('xp'), active: sidebarView === 'xp' }
+            { id: 'more' as const, label: 'เมนู', icon: Menu, badge: 0, onClick: () => setMobileMenuOpen(true), active: mobileMenuOpen || sidebarView === 'xp' || sidebarView === 'calendar' || sidebarView === 'settings' || sidebarView === 'archived' }
           ].map(item => {
             const Icon = item.icon;
             return (
@@ -2410,16 +2410,19 @@ export default function TeacherPortalPage() {
                 type="button"
                 onClick={() => {
                   item.onClick();
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                  if (item.id !== 'more') window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
-                className={`relative min-h-[48px] py-1.5 px-0.5 rounded-xl flex flex-col items-center justify-center gap-0.5 cursor-pointer transition ${
+                className={`relative min-h-[56px] py-1.5 px-1 rounded-xl flex flex-col items-center justify-center gap-0.5 cursor-pointer transition active:scale-95 ${
                   item.active ? 'text-[var(--color-primary)] bg-[var(--color-primary-soft)] font-bold' : 'text-[var(--text-muted)]'
                 }`}
               >
+                {item.active && (
+                  <span className="absolute top-0.5 w-7 h-1 rounded-full bg-[var(--color-primary)]" />
+                )}
                 <Icon className="w-5 h-5 shrink-0" />
-                <span className="text-[10px] sm:text-[11px] font-heading leading-tight">{item.label}</span>
+                <span className="text-[11px] font-heading leading-tight">{item.label}</span>
                 {item.badge > 0 && (
-                  <span className="absolute top-1 right-1.5 min-w-[16px] h-4 px-1 rounded-full bg-[var(--color-danger)] text-white text-[9px] font-mono font-bold flex items-center justify-center">
+                  <span className="absolute top-1 right-2 min-w-[17px] h-4 px-1 rounded-full bg-[var(--color-danger)] text-white text-[9px] font-mono font-bold flex items-center justify-center">
                     {item.badge}
                   </span>
                 )}

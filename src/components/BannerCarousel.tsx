@@ -83,8 +83,8 @@ export function BannerCarousel({ banners, loading }: BannerCarouselProps) {
           className="relative z-10 w-full h-full object-contain"
         />
 
-        {/* แถบเกรเดียนต์ดำด้านล่างให้อ่านข้อความคมชัด Contrast >= 4.5:1 */}
-        <div className="absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black/90 via-black/60 to-transparent pt-14 pb-4 px-4 sm:px-6 text-white">
+        {/* แถบเกรเดียนต์ดำแสดงเฉพาะจอ sm ขึ้นไป เพื่อไม่ให้ข้อความทับรูปและปุ่มลูกศรบนมือถือ */}
+        <div className="hidden sm:block absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black/90 via-black/60 to-transparent pt-14 pb-4 px-6 text-white">
           <div className="flex items-end justify-between gap-4">
             <div className="space-y-1 min-w-0">
               {current.badge && (
@@ -92,7 +92,7 @@ export function BannerCarousel({ banners, loading }: BannerCarouselProps) {
                   {current.badge}
                 </span>
               )}
-              <h2 className="font-heading font-bold text-base sm:text-xl leading-snug text-white">
+              <h2 className="font-heading font-bold text-lg sm:text-xl leading-snug text-white">
                 {current.title}
               </h2>
               <p className="text-sm text-white/90 line-clamp-2">{current.subtitle}</p>
@@ -103,7 +103,7 @@ export function BannerCarousel({ banners, loading }: BannerCarouselProps) {
                 href={current.linkUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="hidden sm:inline-flex items-center gap-1.5 shrink-0 px-3.5 py-2 rounded-xl bg-white/15 hover:bg-white/25 backdrop-blur-md text-white text-sm font-heading font-semibold border border-white/30 transition"
+                className="inline-flex items-center gap-1.5 shrink-0 px-3.5 py-2 rounded-xl bg-white/15 hover:bg-white/25 backdrop-blur-md text-white text-sm font-heading font-semibold border border-white/30 transition"
               >
                 อ่านต่อ <ExternalLink className="w-4 h-4" />
               </a>
@@ -118,7 +118,7 @@ export function BannerCarousel({ banners, loading }: BannerCarouselProps) {
               type="button"
               onClick={goPrev}
               aria-label="แบนเนอร์ก่อนหน้า"
-              className="absolute left-3 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-black/55 hover:bg-black/80 text-white flex items-center justify-center border border-white/25 transition cursor-pointer"
+              className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 z-20 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-black/55 hover:bg-black/80 text-white flex items-center justify-center border border-white/25 transition cursor-pointer"
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
@@ -126,12 +126,36 @@ export function BannerCarousel({ banners, loading }: BannerCarouselProps) {
               type="button"
               onClick={goNext}
               aria-label="แบนเนอร์ถัดไป"
-              className="absolute right-3 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-black/55 hover:bg-black/80 text-white flex items-center justify-center border border-white/25 transition cursor-pointer"
+              className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 z-20 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-black/55 hover:bg-black/80 text-white flex items-center justify-center border border-white/25 transition cursor-pointer"
             >
               <ChevronRight className="w-5 h-5" />
             </button>
           </>
         )}
+      </div>
+
+      {/* คำบรรยายแบนเนอร์แบบโปร่งชัดด้านล่างรูปเฉพาะบนมือถือ (ไม่ทับตัวอักษรในภาพและปุ่มลูกศร) */}
+      <div className="sm:hidden px-3.5 py-2.5 bg-[var(--bg-surface)] border-t border-[var(--border-subtle)] space-y-1">
+        <div className="flex items-center justify-between gap-2">
+          {current.badge && (
+            <span className="inline-block text-[11px] font-heading font-bold px-2 py-0.5 rounded-md bg-[var(--color-primary)] text-white">
+              {current.badge}
+            </span>
+          )}
+          {current.linkUrl && (
+            <a
+              href={current.linkUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs font-heading font-bold text-[var(--color-primary)] inline-flex items-center gap-1"
+            >
+              อ่านต่อ <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+          )}
+        </div>
+        <h2 className="font-heading font-bold text-sm text-[var(--text-primary)] leading-snug line-clamp-1">
+          {current.title}
+        </h2>
       </div>
 
       {/* จุดบอกหน้าด้านล่าง */}

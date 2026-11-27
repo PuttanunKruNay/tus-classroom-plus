@@ -140,7 +140,8 @@ a {
   outline-offset: 2px;
 }
 
-/* Inputs & Form Controls */
+/* Inputs & Form Controls + Buttons inside @layer components เพื่อให้ utility อย่าง hidden sm:inline-flex ทำงานได้ 100% */
+@layer components {
 .tus-input {
   width: 100%;
   min-height: 46px;
@@ -266,6 +267,7 @@ a {
   min-height: 42px;
   padding: 0.45rem 0.9rem;
   font-size: 0.875rem;
+}
 }
 
 /* ---------- Cards & Surfaces ---------- */

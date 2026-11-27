@@ -110,12 +110,12 @@ export function FloatingContactTeacher({
   )}`;
 
   return (
-    <div className="fixed bottom-[calc(8.5rem+env(safe-area-inset-bottom))] md:bottom-24 right-2.5 sm:right-4 z-50">
+    <div className="fixed bottom-[calc(4.8rem+env(safe-area-inset-bottom))] left-3 md:left-auto md:bottom-24 md:right-4 z-50">
       {open && (
         <div
           role="dialog"
           aria-label="ติดต่อคุณครูผู้สอน"
-          className="mb-2.5 w-[calc(100vw-1.25rem)] sm:w-[400px] h-[min(72dvh,540px)] tus-card overflow-hidden flex flex-col shadow-2xl border-2 border-[var(--color-primary-border)] animate-scale-pop"
+          className="fixed inset-x-3 bottom-[calc(8.6rem+env(safe-area-inset-bottom))] md:static md:mb-3 md:w-[400px] h-[min(68dvh,540px)] tus-card overflow-hidden flex flex-col shadow-2xl border-2 border-[var(--color-primary-border)] animate-scale-pop"
         >
           {/* Header */}
           <div className="bg-[var(--color-primary)] text-white px-4 py-3 flex items-center justify-between gap-2">

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { LogOut, Home, KeyRound, X, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
+import { LogOut, Home, KeyRound, X, Eye, EyeOff, CheckCircle2, UserCircle2 } from 'lucide-react';
 import { ThemeToggleButton } from '@/components/ThemeProvider';
 import { useToast } from '@/components/ToastProvider';
 import type { UserRole } from '@/types/database';
@@ -27,6 +27,7 @@ export function PortalHeader({
   const { showToast } = useToast();
 
   const [passOpen, setPassOpen] = useState(false);
+  const [mobileAccountOpen, setMobileAccountOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -127,10 +128,22 @@ export function PortalHeader({
 
             {role && (
               <>
+                {/* บนมือถือรวมปุ่มบัญชี (เปลี่ยนรหัส/หน้าหลัก/ออก) เป็นปุ่มเดียว เพื่อไม่ให้หัวเว็บเบียดกัน */}
+                <button
+                  type="button"
+                  onClick={() => setMobileAccountOpen(true)}
+                  className="sm:hidden btn-secondary-3d btn-compact-3d !px-2.5"
+                  aria-label="เมนูบัญชีผู้ใช้"
+                  title="บัญชีและออกจากระบบ"
+                >
+                  <UserCircle2 className="w-5 h-5" />
+                  <span className="text-xs font-bold">บัญชี</span>
+                </button>
+
                 <button
                   type="button"
                   onClick={() => setPassOpen(true)}
-                  className="btn-secondary-3d btn-compact-3d !px-2.5 sm:!px-3"
+                  className="hidden sm:inline-flex btn-secondary-3d btn-compact-3d !px-3"
                   aria-label="เปลี่ยนรหัสผ่าน"
                   title="เปลี่ยนรหัสผ่านของฉัน"
                 >
@@ -140,29 +153,113 @@ export function PortalHeader({
 
                 <Link
                   href="/"
-                  className="btn-secondary-3d btn-compact-3d !px-2.5 sm:!px-3"
+                  className="hidden sm:inline-flex btn-secondary-3d btn-compact-3d !px-3"
                   aria-label="กลับหน้าหลัก"
                   title="หน้าหลัก"
                 >
                   <Home className="w-4 h-4" />
-                  <span className="hidden sm:inline">หน้าหลัก</span>
+                  <span>หน้าหลัก</span>
                 </Link>
 
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="btn-danger-3d btn-compact-3d !px-2.5 sm:!px-3"
+                  className="hidden sm:inline-flex btn-danger-3d btn-compact-3d !px-3"
                   aria-label="ออกจากระบบ"
                   title="ออกจากระบบ"
                 >
                   <LogOut className="w-4 h-4" />
-                  <span className="hidden sm:inline">ออก</span>
+                  <span>ออก</span>
                 </button>
               </>
             )}
           </div>
         </div>
       </header>
+
+      {/* Bottom Sheet บัญชีผู้ใช้บนมือถือ (ปุ่มใหญ่กดง่าย ไม่ต้องเล็งปุ่มเล็กบนแถบหัวเว็บ) */}
+      {mobileAccountOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="เมนูบัญชีผู้ใช้"
+          className="sm:hidden fixed inset-0 z-[70] bg-black/55 flex items-end justify-center"
+          onClick={() => setMobileAccountOpen(false)}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            className="w-full bg-[var(--bg-surface)] rounded-t-3xl border-t-2 border-[var(--border-strong)] p-5 pb-8 space-y-4 shadow-2xl animate-fade-up"
+          >
+            <div className="flex items-center justify-between gap-3 border-b border-[var(--border-subtle)] pb-3">
+              <div className="min-w-0">
+                <div className="font-heading font-bold text-base text-[var(--text-primary)] truncate">
+                  {userName || 'บัญชีผู้ใช้งาน'}
+                </div>
+                {userMeta && <div className="text-xs text-[var(--text-secondary)] truncate">{userMeta}</div>}
+              </div>
+              <button
+                type="button"
+                onClick={() => setMobileAccountOpen(false)}
+                className="p-2 rounded-xl bg-[var(--bg-surface-muted)] cursor-pointer"
+                aria-label="ปิดเมนูบัญชี"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-2.5">
+              {role === 'admin' && (
+                <div className="grid grid-cols-2 gap-2">
+                  <Link
+                    href="/admin"
+                    onClick={() => setMobileAccountOpen(false)}
+                    className="btn-secondary-3d w-full"
+                  >
+                    หน้าแอดมิน
+                  </Link>
+                  <Link
+                    href="/teacher"
+                    onClick={() => setMobileAccountOpen(false)}
+                    className="btn-secondary-3d w-full"
+                  >
+                    หน้าครูผู้สอน
+                  </Link>
+                </div>
+              )}
+
+              <Link
+                href="/"
+                onClick={() => setMobileAccountOpen(false)}
+                className="btn-secondary-3d w-full"
+              >
+                <Home className="w-5 h-5" /> กลับหน้าหลักโรงเรียน
+              </Link>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileAccountOpen(false);
+                  setPassOpen(true);
+                }}
+                className="btn-secondary-3d w-full"
+              >
+                <KeyRound className="w-5 h-5" /> เปลี่ยนรหัสผ่านของฉัน
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileAccountOpen(false);
+                  void handleLogout();
+                }}
+                className="btn-danger-3d w-full"
+              >
+                <LogOut className="w-5 h-5" /> ออกจากระบบ
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal เปลี่ยนรหัสผ่าน (ใช้ได้ทั้งนักเรียน ครู และแอดมิน) */}
       {passOpen && (
